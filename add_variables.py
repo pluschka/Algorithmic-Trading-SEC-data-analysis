@@ -54,3 +54,12 @@ all_df_of_close_data = df
 
 # high price dummy
 all_df_of_close_data['high_price'] = (all_df_of_close_data['0'] > all_df_of_close_data['0'].median()).astype('int8')
+
+# postTransactionAmounts.sharesOwnedFollowingTransaction is the amount of shares after each filling
+holdings_before_filling = all_df_of_close_data['postTransactionAmounts.sharesOwnedFollowingTransaction'] - all_df_of_close_data['amounts.shares']
+
+# calculation: (amount of shares in this filling/old amount holdings)*100 for percent to know how much the person baught in comparison to what they owned
+# old amount of shares = postTransactionAmounts.sharesOwnedFollowingTransaction - amount of shares in this filling aka amounts.shares
+# if old amount of shares = 0 then division by 0 would cause problems therefore:
+all_df_of_close_data['holding_change_percent'] = np.where(holdings_before_filling == 0, 0, (all_df_of_close_data['amounts.shares'] / holdings_before_filling) * 100)
+
