@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
 import os
-#import sys
-#import re
 import math
 import itertools
 import seaborn as sns
@@ -25,7 +23,7 @@ def stats(df):
 
     Output:
     pd.DataFrame: overview with descriptive statistics and missing values for each variable
-    csv: the same overview saved to Data/Exporte
+    csv: the same overview saved to export
     """
     # describe dataframes
     description = df.describe(include="all").T
@@ -43,14 +41,14 @@ def stats(df):
     na_counts = pd.DataFrame(df.isna().sum(), columns=['na_count'])
     
     # merge statistics
-    descriptives = dtypes.join(na_counts).join(description).join(skew).join(var)
+    descriptive = dtypes.join(na_counts).join(description).join(skew).join(var)
 
     # change float display format since variances are shown in scientific notation
-    descriptives['var'] = descriptives['var'].apply(lambda x: f"{x:.6f}" if pd.notnull(x) else x)
+    descriptive['var'] = descriptive['var'].apply(lambda x: f"{x:.6f}" if pd.notnull(x) else x)
 
     # display all rows and columns
     with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-        display(descriptives)
+        display(descriptive)
 
 def clean_dtypes(df):
     """
@@ -114,52 +112,58 @@ def missing_values_summary(df):
     return missing
 
 
-def Missings(df, default_missing_strategy = "delete", execpt_replace_0=[], execpt_replace_mean=[],execpt_delete=[]):
+def missing_strategy(df, default_missing_strategy = "delete", except_replace_0=[], except_replace_mean=[],except_delete=[]):
     """
-    Behandelt Missings je nach gewählter Strategie
-    
-    default_missing_strategy (string) wird pauschal für alle Variablen angewand, essei denn sie sind in den anderen Listen gelistet
-        replace_0: Ersetzt NAs mit 0
-        replace_mean: Ersetzt NAs mit Durchschnittswert der Variable
-        delete: Löscht jede Zeile in der ein NA vorkommt
+    Handles missing values according to the chosen strategy.
 
-    execpt_replace_0 (list): Diese Variablen werden mit 0 ersetzt, statt mit der default strategie behandelt
-    execpt_replace_mean (list): Diese Variablen werden mit dem Durchschnitt ersetzt, statt mit der default strategie behandelt
-    execpt_delete (list): Diese Variablen werden gelöscht, statt mit der default strategie behandelt
+    default_missing_strategy (str) is applied to all variables unless they are listed in the exception lists:
+        replace_0: replaces NAs with 0
+        replace_mean: replaces NAs with the column mean
+        delete: drops every row that contains an NA
 
-    Bsp.:  Missings(diff_df, default_missing_strategy = "delete", 
-                             execpt_replace_0=["Variable_1"], 
-                             execpt_replace_mean=["Variable_1"],
-                             execpt_delete=[])
+    except_replace_0 (list): variables to replace with 0 instead of using the default strategy
+    except_replace_mean (list): variables to replace with the mean instead of using the default strategy
+    except_delete (list): variables for which rows with NAs should be dropped instead of using the default strategy
+
+    Example:
+        missing_strategy(
+            diff_df,
+            default_missing_strategy="delete",
+            except_replace_0=["Variable_1"],
+            except_replace_mean=["Variable_2"],
+            except_delete=[],
+        )
 
     Input:
-        df (pd.DataFrame): unsere aktuellen Daten
+        df (pd.DataFrame): our current data
 
     Output:
-        Neues df (pd.DataFrame): Ohne NAs
-        
+        New df (pd.DataFrame): dataset without NAs
     """
     for col in df.columns:
         if df[col].isna().any():
-            if col in execpt_replace_0:
+            if col in except_replace_0:
                 df.loc[:, col] = df[col].fillna(0)
-            elif col in execpt_replace_mean:
+            elif col in except_replace_mean:
                 df.loc[:, col] = df[col].fillna(df[col].mean())
-            elif col in execpt_delete:
+            elif col in except_delete:
                 # ~ bitwise negation operator Tilde is bitwise negation operator. 
                 # It flips 1's with 0's and vice versa. This operation takes place in binary level.
-                df = df[~df[col].isna()]  # Zeilen mit NA in dieser Spalte löschen
+                df = df[~df[col].isna()]  # drop columns with na
             else:
-                # Default Strategie
+                # default strategy
                 if default_missing_strategy == "replace_0":
                     df.loc[:, col] = df[col].fillna(0)
                 elif default_missing_strategy == "replace_mean":
                     df.loc[:, col] = df[col].fillna(df[col].mean())
                 elif default_missing_strategy == "delete":
-                    df = df[~df[col].isna()]  # Zeilen mit NA in dieser Spalte löschen
+                    df = df[~df[col].isna()]  # drop columns with na
     return df
 
 def plot_heatmap(df):
+    """
+    Plots a heatmap of the given df. Make sure to remove string variables.
+    """
     corr_matrix = df.corr(numeric_only=False).abs()
     plt.figure(figsize=(12, 10))
     sns.heatmap(corr_matrix, cmap='coolwarm', center=0)
@@ -168,72 +172,76 @@ def plot_heatmap(df):
 #plot_heatmap(relevant_data_uncleaned)
 
 
-def Korrelation(df, correlation_threshold = 0.8, df_name="df", target_col="target", never_drop="target"):
+def remove_correlation(df, correlation_threshold = 0.8, df_name="df", target_col="target", never_drop="target"):
     """
-    Berechnet die Korrelationsmatrix und speichert sie in dem Notebook Ordner ab.
-    Alle Variablen mit einer Korrelation über dem Schwellwert (default = 0.8) werden aus dem Datensatz entfernt unter folgender 
-    Entschiedungsregel:
-    Wenn eine Variable mit einer anderen über dem threshold korreliert wird anhand der Korrelation mit der Target
-    Variable entschieden welche entfernt wird. Die Idee ist, dass man die Variable behält mit einer höheren Korrelation zu
-    target, weil diese mehr Erklärungsgehalt für das Modell hat. Die Variable mit der geringeren Korrelation zu
-    target wird gelöscht.
-    Ausgegeben wird eine Liste der entfernetn Variablen mit den Korrelationen und das bereinihgte df.
+    Computes the correlation matrix and saves it in the notebook directory.
+    All variables with a correlation above the threshold (default = 0.8) are removed
+    according to the following decision rule:
+    If two variables correlate above the threshold, the one with the lower correlation
+    to the target variable is removed. The idea is to keep the variable with the
+    higher correlation to the target because it provides more explanatory power
+    for the model. The output includes a list of removed variables with their
+    correlations and the cleaned DataFrame.
 
-    Wenn man das in Excel Überprüfen will =KORREL(--bool_variable_1; --bool_variable_2), das -- bei Bool Werten. Sind die Missings vorher 
-    nicht behandelt, dann kommen leicht andere Korrelationen raus. Übergibt man Excel die um Missings bereinigten Daten, dann kommen
-    dieselben Korrelationen raus wie in python raus. 
-        
+    To verify in Excel: =CORREL(--bool_variable_1, --bool_variable_2).
+    Use the double unary (--) for boolean values. If missing values are not handled
+    beforehand, Excel may yield slightly different correlations. If you pass the data
+    with missing values already handled, Excel will produce the same correlations
+    as Python.
+
     Input:
-        df (pd.DataFrame): unsere aktuellen Daten
-        correlation_threshold (float): Grenzwert für das Entfernen der Variablen
-        df_name (string): Name vom verwendeten df, T1_df, T2_df oder diff_df. Das wird für die Log Dokumentation benötigt.
-        target_col (string): als Hilfe für die Berechnung der Korrelation mit der Target Variable
-        never_drop (list): Wenn man vermeiden will, dass eine bestimmt Variable gelöst wird, speichert man sie hier als Liste ab
-        
+        df (pd.DataFrame): our current data
+        correlation_threshold (float): threshold for dropping variables
+        df_name (str): name of the DataFrame (e.g., T1_df, T2_df, or diff_df);
+                    used for log documentation
+        target_col (str): the target variable used to compare correlations
+        never_drop (list): variables that must never be dropped
+
     Output:
-        Neues df (pd.DataFrame): ohne Variablen mit einer Korrelation über dem Wert festgelegt mit correlation_threshold
-        Korrelations Matrix (Excel Datei): Abgespeichert im Notebook Ordner
-        Print Statements: Liste aller entfernten Variablen mit Korrelationsinfos
+        New df (pd.DataFrame): without variables whose correlation exceeds correlation_threshold
+        Correlation matrix (Excel file): saved in the notebook directory
+        Print statements: list of all dropped variables with correlation details
     """
-    # Korrelationsmatrix berechnen
+
+    # calculate correlation matrix
     corr_matrix = df.corr().abs()
     
-    # Diagonale auf 0 setzen, um sich selbstkorrelationen zu ignorieren
+    # set the diagonal to 0 to ignore self-correlations
     np.fill_diagonal(corr_matrix.values, 0)
 
     corr_with_target = df.corr(method='pearson')[target_col].abs()
     to_drop = set()
     removed_details = []
 
-    # Für alle Werte unterhalb der Diagonale
-    for i in range(len(corr_matrix.columns)): # range = 0, 1, 2 ... bis Anzahl Spalten
-        for j in range(i): # range(i=0) -> 0, dann range(i=1) -> 0, 1 ; dann range(i=2) -> 0, 1,2 :  range(i=5) -> 0, 1, 2, 3, 4, 5 usw
+    # for all values below the diagonal
+    for i in range(len(corr_matrix.columns)): # range = 0, 1, 2 ... up to the number of columns
+        for j in range(i): # range(i) yields 0..i-1; e.g., i=0 -> [], i=1 -> [0], i=2 -> [0, 1], i=5 -> [0, 1, 2, 3, 4]
             var1 = corr_matrix.columns[i]
             var2 = corr_matrix.columns[j]
             corr_value = corr_matrix.iloc[i, j]
 
-            # Wenn in der Korrelationsmatrix eine sehr hohe Korrelation gefunden wird...
+            # If a very high correlation is found in the correlation matrix...
             if corr_value > correlation_threshold:
-                # (Skip den nächsten Teil wenn Variablen shcon in to_drop sind oder undere Target)
+                # skip the next part if the variables are already in to_drop or are the target
                 if var1 in to_drop or var2 in to_drop or var1 == target_col or var2 == target_col:
                     continue
 
-                # ...berechnen wir die Korrelation beider Variablen mit TF_Kündiger.
+                # ...compute each variable's correlation with the target
                 var1_target_corr = corr_with_target.get(var1, 0)
                 var2_target_corr = corr_with_target.get(var2, 0)
 
-                # Um zu entscheiden welche Variable rausfliegt vergleiche die Korrelation mit TF_Kündiger
-                if var1 and var2 in never_drop: # Wenn beide Varibalen in never_drop sind continue
+                # To decide which variable to drop, compare their correlations with the target
+                if var1 and var2 in never_drop: # If both variables are in never_drop, continue
                     continue
 
-                # Wenn var2 in never_drop ist oder die Korrelation von var2 mit Kündiger höher, dann keep var2 und remove var1
+                # If var2 is in never_drop or var2's correlation with the target is higher, keep var2 and drop var1
                 elif var2 in never_drop or var1_target_corr < var2_target_corr: 
                     remove_var = var1
                     keep_var = var2
                     remove_corr = var1_target_corr
                     keep_corr = var2_target_corr
                 
-                # Wenn var1 in never_drop ist oder die Korrelation von var1 mit Kündiger höher, dann keep var1 und remove var2    
+                # If var1 is in never_drop or var1's correlation with the target is higher, keep var1 and drop var2
                 elif var1 in never_drop or var2_target_corr <= var1_target_corr:
                     remove_var = var2
                     keep_var = var1
@@ -243,16 +251,16 @@ def Korrelation(df, correlation_threshold = 0.8, df_name="df", target_col="targe
                 to_drop.add(remove_var)
                 removed_details.append((remove_var, keep_var, corr_value, remove_corr, keep_corr))
 
-    corr_matrix.to_excel("Korrelationsmatrix.xlsx", index=True)
+    #corr_matrix.to_excel("corrmatrix.xlsx", index=True)
 
     if not to_drop:
-        print(f"In {df_name} wurden keine Spalten wegen zu hoher Korrelation entfernt.")
+        print(f"In {df_name} were no columns removed due to high correlation.")
     else:
-        print("Entfernte Spalten wegen hoher Korrelation:")
+        print("This columns were removed due to high correlation:")
         for remove_var, keep_var, corr_value, remove_corr, keep_corr in removed_details:
-            print(f"In {df_name} wurde '{remove_var}' entfernt wegen der Korrelation mit '{keep_var}' (r = {corr_value:.3f})")
-            print(f"Korrelation von '{remove_var}' mit '{target_col}': {remove_corr:.3f}")
-            print(f"Korrelation von '{keep_var}' mit '{target_col}': {keep_corr:.3f}")
+            print(f"In {df_name} was '{remove_var}' removed because of the correlation with '{keep_var}' (r = {corr_value:.3f})")
+            print(f"Correlation of'{remove_var}' with '{target_col}': {remove_corr:.3f}")
+            print(f"Correlation of '{keep_var}' with '{target_col}': {keep_corr:.3f}")
             print("-----------------------------------")
 
     print("-------------------------------------------------------------------------------------------")
@@ -261,80 +269,118 @@ def Korrelation(df, correlation_threshold = 0.8, df_name="df", target_col="targe
     return df, removed_details, corr_matrix
 
 
-def Varianz(df, variance_threshold = 0.1, target_corr_threshold = 0.2, df_name="df", target_col="TF_Kündiger", never_drop=["TF_Kündiger"]):
+def variance(df, 
+             variance_threshold = 0.1, 
+             target_corr_threshold = 0.2, 
+             df_name="df",
+             target_col="target_variable",
+             never_drop=["target_variable"]):
     """
-    Berechnet die Varianz jeder Variable.
-    var() ist äquivalent zu VARIANZA() in Excel für Binäre Variable und VAR.P() für die restlichen numerischen Variablen in Excel.
-        
+    Computes the variance of each variable.
+    var() is equivalent to VAR.S in Excel for binary variables and VAR.P for the remaining numeric variables.
+
     Input:
-        df (pd.DataFrame): unsere aktuellen Daten
-        variance_threshold (float): Grenzwert für Varianz für das Entfernen der Variablen 
-        target_corr_threshold (float): Grenzwert für Korrelation mit Targetvariable für das Entfernen der Variablen 
-        df_name (string): Name vom verwendeten df, T1_df, T2_df oder diff_df. Das wird für die Log Dokumentation benötigt.
-        target_col (string): als Hilfe für die Berechnung der Korrelation mit der Target Variable
-        never_drop (list): Wenn man vermeiden will, dass eine bestimmt Variable gelöst wird, speichert man sie hier als Liste ab
-    
+        df (pd.DataFrame): our current data
+        variance_threshold (float): variance threshold for dropping variables
+        target_corr_threshold (float): correlation-with-target threshold for dropping variables
+        df_name (str): name of the DataFrame (e.g., T1_df, T2_df, or diff_df); used for log documentation
+        target_col (str): the target variable used to compute correlations
+        never_drop (list): variables that must never be dropped
+
     Output:
-        Neues df (pd.DataFrame): ohne Variablen mit niedriger Varianz unter dem Wert festgelegt mit variance_threshold
-        Print Statement: Liste aller entfernten Variablen
+        New df (pd.DataFrame): without variables whose variance is below variance_threshold
+        Print statements: list of all removed variables
     """
-    variances = df.var(skipna=True, ddof=1) # ddof=1 für Stichprobenvarianz; 0 wäre Populationsvarianz
+    variances = df.var(skipna=True, ddof=1)  # ddof=1 for sample variance; 0 would be population variance
 
     low_variance_columns = list(variances[(variances < variance_threshold)].index)
 
-    # Korrelation mit Zielvariable berechnen
+    # compute correlation with the target variable
     corr_with_target = df.corr(method='pearson')[target_col].abs()
 
-    # Varianz = 0 kann schon mal in die to_drop liste
+
     to_drop = []
     
-    # Nur Variablen entfernen, die auch eine niedrige Korrelation zur Zielvariable haben
+    # only drop variables that also have low correlation with the target
     for var in low_variance_columns:
         if var in never_drop:
-            continue  # nicht löschen, weil in never_drop-Liste
+            continue  # don't drop because it's in the never_drop list
             
         var_target_corr = corr_with_target.get(var, 0)
 
         if var_target_corr > target_corr_threshold:
-            print(f"In {df_name} hat '{var}' niedrige Varianz mit {variances[var]:.6f}, aber hohe Korrelation mit {target_col} {var_target_corr:.3f} wird behalten.")
+            print(f"In {df_name} has '{var}' a low variance of {variances[var]:.6f}, but a high correlation with {target_col} {var_target_corr:.3f} and is not removed from the df")
 
         else:
             to_drop.append(var)
        
-    # Variablen mit niedriger Varianz aus dem df entfernen
+    # drop low-variance variables from the DataFrame
     df = df.drop(columns=to_drop)
     
     if not to_drop:
-        print(f"In {df_name} wurden keine Spalten wegen zu geringer Varianz entfernt.")
+        print(f"In {df_name} has no low variance variables and no columns were removed.")
     else:
-        print(f"Entfernte Spalten in {df_name} mit niedriger Varianz und geringer Korrelation mit {target_col}:")
+        print(f"Removed columns in {df_name} with low variance and low correlation with {target_col}:")
         for col in to_drop:
-            print(f"{col}: Varianz = {variances[col]:.6f}, Korrelation mit {target_col} = {corr_with_target[col]:.3f}")
+            print(f"{col}: Variance = {variances[col]:.6f}, correlation with {target_col} = {corr_with_target[col]:.3f}")
     print("-------------------------------------------------------------------------------------------")
         
     return df
 
-""""Varianz(relevant_data_without_outlires, 
-        variance_threshold = 0.1,
-        target_corr_threshold = 0.2,
-        df_name="relevant_data_without_outlires",
-        target_col="t_1_percent_change_since_4d",
-        never_drop=["t_1_percent_change_since_4d"])
+# variance(relevant_data_without_outlier, 
+#         variance_threshold = 0.1,
+#         target_corr_threshold = 0.2,
+#         df_name="relevant_data_without_outlier",
+#         target_col="t_1_percent_change_since_4d",
+#         never_drop=["t_1_percent_change_since_4d"])
 
-"""
 
-def Ausreißer(df, default_outlier_strategy = "delete", except_replace_0=[], except_replace_mean=[], except_delete=[], ignore=[]):
+def outlier_strategy(df,
+                     default_outlier_strategy = "delete",
+                     except_replace_0=[],
+                     except_replace_mean=[],
+                     except_delete=[],
+                     ignore=[]):
+    """
+    Removes outliers column-wise using the IQR rule and applies a chosen handling strategy.
+
+    Outlier rule:
+        For each numeric column, compute Q1 (25th pct), Q3 (75th pct), IQR = Q3 - Q1.
+        Values < Q1 - 1.5*IQR or > Q3 + 1.5*IQR are treated as outliers.
+
+    Input:
+        df (pd.DataFrame): input data. All columns are coerced to numeric (non-numeric → NaN) before processing.
+        default_outlier_strategy (str): fallback strategy for columns not listed in the exception lists.
+            Allowed: "delete" | "replace_0" | "replace_mean"
+            - "delete": drop rows where the column has an outlier
+            - "replace_0": replace outliers in the column with 0
+            - "replace_mean": replace outliers in the column with the column mean
+        except_replace_0 (list[str]): columns for which outliers are replaced with 0 (overrides default).
+        except_replace_mean (list[str]): columns for which outliers are replaced with the column mean (overrides default).
+        except_delete (list[str]): columns for which rows with outliers are dropped (overrides default).
+        ignore (list[str]): columns to skip entirely (no outlier handling applied).
+
+    Output:
+        pd.DataFrame: DataFrame after outlier handling.
+
+    Notes:
+        - Only numeric columns are processed; coercion uses pd.to_numeric(..., errors="coerce").
+        - If IQR is 0, no values will be marked as outliers for that column (bounds collapse to Q1=Q3).
+    """
+
+
     cols = df.columns
     df = df[cols].apply(pd.to_numeric, errors='coerce')
+
     for cols in df.select_dtypes(include=['number']).columns:
         if cols in ignore: 
             continue
-        # Q1, Q3 und IQR berechnen
+        # calculate Q1, Q3 und IQR 
         Q1 = df[cols].quantile(0.25)
         Q3 = df[cols].quantile(0.75)
         IQR = Q3 - Q1
 
-        # Definiere die Grenzen für Ausreißer
+        # define threshold for outlier
         lower_bound = Q1 - 1.5 * IQR
         upper_bound = Q3 + 1.5 * IQR
 
@@ -348,7 +394,7 @@ def Ausreißer(df, default_outlier_strategy = "delete", except_replace_0=[], exc
         elif cols in except_delete:
             df = df[~((df[cols] < lower_bound) | (df[cols] > upper_bound))]
         else:
-            # Default Strategie
+            # strategies
             if default_outlier_strategy == "replace_0":
                 df[cols] = df[cols].apply(
                     lambda x: 0 if x < lower_bound or x > upper_bound else x)
@@ -359,85 +405,88 @@ def Ausreißer(df, default_outlier_strategy = "delete", except_replace_0=[], exc
             elif default_outlier_strategy == "delete":
                 df = df[~((df[cols] < lower_bound) | (df[cols] > upper_bound))]
     return df
-#Ausreißer(relevant_data_uncleaned, default_outlier_strategy = "delete", except_replace_0=[], except_replace_mean=[], except_delete=[], ignore=[])
+
+# outlier_strategy(relevant_data_uncleaned, 
+# default_outlier_strategy = "delete",
+# except_replace_0=[],
+# except_replace_mean=[],
+# except_delete=[],
+# ignore=[])
 
 
 def count_outliers(df, columns=None, iqr_k=1.5):
+    """
+    Makes a table summary of amount of outliers in df.
+    """
     cols = df.columns if columns is None else list(columns)
 
-    # 1) Alles numerisch erzwingen (Nicht-Numerisches -> NaN)
+    # fore numeric
     num = df[cols].apply(pd.to_numeric, errors='coerce')
 
-    # 3) Quantile/IQR
+    # calculate quantile/IQR
     Q1 = num.quantile(0.25)
     Q3 = num.quantile(0.75)
     IQR = (Q3 - Q1).astype(float)
 
-    # 4) Grenzen + Outlier-Maske (spaltenweise Alignment!)
+    # select outliers
     lb = (Q1 - float(iqr_k) * IQR).astype(float)
     ub = (Q3 + float(iqr_k) * IQR).astype(float)
     mask = num.lt(lb, axis=1) | num.gt(ub, axis=1)
 
+    # summarize outliers table
     return mask.sum().sort_values(ascending=False)
- 
 
-#stats(df_important)
 #count_outliers(df_important, column)
 
-def Ausreißerstrategievgl(df, kündiger_var="target"):
-    import math
-    variablen = df.select_dtypes(include='number').columns.tolist()
+def outlier_strategy_comparison(df, name_target="target_variable"):
+    variables = df.select_dtypes(include='number').columns.tolist()
 
-    for var in variablen:
-        # Spalte in float umwandeln, damit replace_0/mean keine Datentyp-Warnung mehr gibt
+    for var in variables:
+        # change datatype to float to avoid warnings
         df[var] = df[var].astype(float)
         
         fig, axes = plt.subplots(1, 4, figsize=(20, 5))
-        anzahl_ausreißer = count_outlires(df, column=var)
-        fig.suptitle(f"Ausreißerstrategien für: {var}  –  Ausreißeranzahl: {anzahl_ausreißer}", fontsize=16)
+        count_outliers = count_outliers(df, column=var)
+        fig.subtitle(f"Outlier strategy for {var} (Outliers: {count_outliers}", fontsize=16)
 
-        # DataFrames für jede Strategie vorbereiten
-        df0 = Ausreißer(df.copy(), default_outlier_strategy="replace_0",
-                        except_replace_0=[], except_replace_mean=[],
-                        except_delete=[], ignore=[var])
+        # prepare df for each strategy
+        df0 = outlier_strategy(df.copy(), default_outlier_strategy="replace_0",
+                               except_replace_0=[], except_replace_mean=[],
+                               except_delete=[], ignore=[var])
 
-        df1 = Ausreißer(df.copy(), default_outlier_strategy="replace_0",
-                        except_replace_0=[], except_replace_mean=[],
-                        except_delete=[], ignore=[])
+        df1 = outlier_strategy(df.copy(), default_outlier_strategy="replace_0",
+                               except_replace_0=[], except_replace_mean=[],
+                               except_delete=[], ignore=[])
 
-        df2 = Ausreißer(df.copy(), default_outlier_strategy="replace_0",
-                        except_replace_0=[], except_replace_mean=[var],
-                        except_delete=[], ignore=[])
+        df2 = outlier_strategy(df.copy(), default_outlier_strategy="replace_0",
+                               except_replace_0=[], except_replace_mean=[var],
+                               except_delete=[], ignore=[])
 
-        df3 = Ausreißer(df.copy(), default_outlier_strategy="replace_0",
-                        except_replace_0=[], except_replace_mean=[],
-                        except_delete=[var], ignore=[])
+        df3 = outlier_strategy(df.copy(), default_outlier_strategy="replace_0",
+                               except_replace_0=[], except_replace_mean=[],
+                               except_delete=[var], ignore=[])
 
-        daten = [df0, df1, df2, df3]
-        titel = ["Original mit Ausreißer", "mit 0 ersetzt", "mit Durchschnitt ersetzt", "Ausreißer gelöscht"]
+        dataframe = [df0, df1, df2, df3]
+        title = ["Original data", "replaced with 0", "replaced with mean", "outlier deleted"]
 
         for i in range(4):
             ax = axes[i]
-            if kündiger_var is None:
-                sns.histplot(data=daten[i], x=var, bins=30, kde=False, ax=ax)
+            if name_target is None:
+                sns.histplot(data=dataframe[i], x=var, bins=30, kde=False, ax=ax)
             else:
-                sns.histplot(data=daten[i], x=var, hue=kündiger_var, bins=30, kde=False, ax=ax)
-            ax.set_title(titel[i])
+                sns.histplot(data=dataframe[i], x=var, hue=name_target, bins=30, kde=False, ax=ax)
+            ax.set_title(title[i])
         
         plt.tight_layout(rect=[0, 0, 1, 0.95])
-
-        output_path = os.path.join("..", "Reports", "Ausreißeranalyse", f"Ausreißeranalyse_{var}.png")
-        plt.savefig(output_path, dpi=300)
-        
         plt.show()
 
 
-def Verteilung_Übersicht(df):
+def distribution_overview(df):
     """
-    Gibt für jede numerische Spalte die ursprüngliche Schiefe der Verteilung (skewness) der original Variablen
-    sowie die Skewness nach der Transformationen zurück.
-    
-    Folgende Transformationen werden betrachtet:
+    Returns, for each numeric column, the original skewness of the variable
+    and the skewness after the following transformations:
+
+    Transformations considered:
     - log(x)
     - log1p(x)
     - sqrt(x)
@@ -446,23 +495,24 @@ def Verteilung_Übersicht(df):
     - log(max - x + 1)
     - power_transform (Yeo-Johnson)
 
-    log(x) und boxcox(x)nicht auf negative Werte anwendbar
-    
-    Wenn eine Transformation nicht möglich ist, wird '-' angezeigt. Zum Beispiel bei den Binären Variablen.
+    Note: log(x) and boxcox(x) are not applicable to negative values.
+
+    If a transformation is not possible (e.g., for binary variables), '-' is shown.
 
     Input:
-        df (pd.DataFrame): unsere aktuellen Daten
-    
+        df (pd.DataFrame): our current DataFrame
+
     Output:
-        pd.DataFrame: Übersicht mit Skewness-Werten pro Transformation
+        pd.DataFrame: summary with skewness values per transformation
     """
+
     results = []
 
-    # Binäre Variablen überspringen
+    # skip binary variables
     for col in df.columns:
         if df[col].dtype == bool:
             results.append({
-                "Spalte": col,
+                "row": col,
                 "original": "-",
                 "log(x)": "-",
                 "log1p": "-",
@@ -474,42 +524,42 @@ def Verteilung_Übersicht(df):
             continue
 
         series = pd.to_numeric(df[col], errors='coerce')
-        row = {"Spalte": col}
+        row = {"Row": col}
 
-        # Original
+        # original
         try:
-            # Nur sinnvolle Werte verwenden
+            # use only useful variables
             #valid_series = series.dropna()
         
-            # Bedingung: genügend eindeutige Werte und keine konstante Verteilung
+            # condition: enough distinct values
             if series.nunique() <= 1:
-                row["original"] = "nicht berechenbar"
+                row["original"] = "not calculable"
             elif series.var() < 1e-8:
-                row["original"] = "fast konstant"
+                row["original"] = "almost constant"
             else:
                 row["original"] = round(skew(series), 3)
         except:
             row["original"] = "-"
 
-        # log(x) nur für x > 0
+        # log(x) only für x > 0
         try:
             if (series <= 0).any():
-                row["log(x)"] = "nicht anwendbar, weil 0 oder negative Werte"
+                row["log(x)"] = "not applicable because 0 or negative value"
             else:
                 transformed = np.log(series)
                 if len(transformed) <= 1:
-                    row["log(x)"] = "nicht berechenbar"
+                    row["log(x)"] = "not calculable"
                 elif np.var(transformed) < 1e-8:
-                    row["log(x)"] = "fast konstant"
+                    row["log(x)"] = "almost constant"
                 else:
                     row["log(x)"] = round(skew(transformed), 3)
         except:
             row["log(x)"] = "-"
                     
-        # log1p(x) nur für x > -1
+        # log1p(x) only für x > -1
         try:        
             if (series <= -1).any():
-                row["log1p"] = "nicht anwendbar, weil Werte kleiner -1"
+                row["log1p"] = "not calculable because of values smaller then -1"
             else:
                 transformed = np.log1p(series)
                 row["log1p"] = round(skew(transformed), 3)
@@ -517,22 +567,22 @@ def Verteilung_Übersicht(df):
             row["log1p"] = "-"
 
         
-        # sqrt(x) nur für x ≥ 0
+        # sqrt(x) only für x ≥ 0
         try:
             if (series < 0).any():
-                row["sqrt"] = "nicht anwendbar, weil Werte kleiner 0"
+                row["sqrt"] = "not calculable because of values smaller then 0"
             else:
                 transformed = np.sqrt(series)
                 row["sqrt"] = round(skew(transformed), 3)
         except:
             row["sqrt"] = "-"
         
-        # boxcox(x) nur für x > 0
+        # boxcox(x) only für x > 0
         try:
             if (series <= 0).any():
-                row["boxcox"] = "nicht anwendbar, weil Werte 0 oder negativ"
+                row["boxcox"] = "not calculable because of values smaller then 0"
             else:
-                transformed, _ = boxcox(series) # zweiten Rückgabewert (lambda) irgnorieren mit ,_
+                transformed, _ = boxcox(series)
                 row["boxcox"] = round(skew(transformed), 3)
         except:
             row["boxcox"] = "-"
@@ -551,28 +601,32 @@ def Verteilung_Übersicht(df):
     return pd.DataFrame(results)
 
 
-def Transformieren(df, variable=None, transformation=None):
+def transform_skewness(df, variable=None, transformation=None):
     """
-    Wendet gewünschte Transformation auf eine übergebene Variable an.
-    
+    Applies a chosen transformation to a given column.
+
     Input:
-        df (pd.DataFrame): Ursprüngliches DataFrame
-        variable (str): Name der Spalte im DataFrame, z.B. "Variable_1"
-        transformation (str): Transformation zur Verbesserung der Schiefe (Skewness).
-            Auswahl: "log", "log1p", "sqrt", "boxcox", "power_transform"
-    
+        df (pd.DataFrame): original DataFrame
+        variable (str): name of the column in the DataFrame (e.g., "Variable_1")
+        transformation (str): transformation to improve skewness.
+            Options: "log", "log1p", "sqrt", "boxcox", "power_transform"
+
+    Notes:
+        - log(x) and boxcox(x) are not applicable to negative values
+        (log requires x > 0; Box–Cox requires x > 0).
+        - power_transform refers to scikit-learn’s Yeo–Johnson (works with zeros and negatives).
+
     Output:
-        pd.DataFrame: DataFrame mit ggf. transformierter und umbenannter Spalte
-        Print Statement: Skewness der Variable vor und nach der Transformation
+        pd.DataFrame: DataFrame with the column transformed (and renamed if applicable)
+        print: skewness of the variable before and after the transformation
     """
-    
     series = df[variable]
     
-    # Original Skewness
+    # original skewness
     if series.nunique() <= 1:
-        og_skewness = "nicht berechenbar"
+        og_skewness = "not calculable"
     elif series.var() < 1e-8:
-        og_skewness = "fast konstant"
+        og_skewness = "almost constant"
     else:
         og_skewness = round(skew(series), 3)
     
@@ -581,147 +635,145 @@ def Transformieren(df, variable=None, transformation=None):
     # log(x)
     if transformation == "log":
         if (series <= 0).any():
-            new_skewness = "nicht anwendbar, weil 0 oder negative Werte"
+            new_skewness = "not calculable because of values smaller then 0"
         else:
             transformed = np.log(series)
     
     # log1p(x)
     elif transformation == "log1p":
         if (series <= -1).any():
-            new_skewness = "nicht anwendbar, weil Werte kleiner -1"
+            new_skewness = "not calculable because of values smaller then -1"
         else:
             transformed = np.log1p(series)
     
     # sqrt(x)
     elif transformation == "sqrt":
         if (series < 0).any():
-            new_skewness = "nicht anwendbar, weil Werte kleiner 0"
+            new_skewness = "not calculable because of values smaller then 0"
         else:
             transformed = np.sqrt(series)
     
     # boxcox(x)
     elif transformation == "boxcox":
         if (series <= 0).any():
-            new_skewness = "nicht anwendbar, weil Werte 0 oder negativ"
+            new_skewness = "not calculable because of values smaller then 0"
         else:
-            transformed, _ = boxcox(series) # zweiten Rückgabewert (lambda) irgnorieren mit ,_
+            transformed, _ = boxcox(series)
     
     # power_transform (Yeo-Johnson)
     elif transformation == "power_transform":
         pt = PowerTransformer(method="yeo-johnson", standardize=False)
         transformed = pt.fit_transform(series.values.reshape(-1, 1)).flatten()
     
-    # Berechne neue Skewness, wenn Transformation stattgefunden hat
+    # calculate new skewness after transformation
     if transformed is not None:
         if len(transformed) <= 1:
-            new_skewness = "nicht berechenbar"
+            new_skewness = "not calculable"
         elif np.var(transformed) < 1e-8:
-            new_skewness = "fast konstant"
+            new_skewness = "almost constant"
         else:
             new_skewness = round(skew(transformed), 3)
         
-        # Speichere transformierte Spalte im DataFrame
+        # save transformed variables in data frame
         new_colname = f"{variable} ({transformation})"
         df[new_colname] = transformed
     
-    print(f"Skewness von '{variable}' ist vorher {og_skewness} und {transformation} ist {new_skewness}")
+    print(f"Skewness of '{variable}' was before {og_skewness} and {transformation} is {new_skewness}")
     
     return df
 
-def balance(df, kündiger_var="target"):
-    # Vorausgesetzter Code für die Erstellung von df_diff
-    df_majority = df[df[kündiger_var] == False]
-    df_minority = df[df[kündiger_var] == True]
+def balance(df, name_target="target"):
+
+    df_majority = df[df[name_target] == False]
+    df_minority = df[df[name_target] == True]
     
-    # Zufällige Stichprobe der Mehrheitklasse in der gleichen Größe wie die Minderheitklasse
+    # random sample of majority class same size as majority class
     df_majority_downsampled = resample(df_majority, 
-                                       replace=False,    # Ohne Zurücklegen
-                                       n_samples=len(df_minority),  # Gleiche Anzahl wie die Minderheit
-                                       random_state=42)  # Reproduzierbare Ergebnisse
+                                       replace=False, # without returning
+                                       n_samples=len(df_minority),  # same size as minority class
+                                       random_state=420)  # set seed
     
-    # Zusammenführen der beiden Gruppen aka Union
+    # union data
     df = pd.concat([df_majority_downsampled, df_minority])
     
-    diagram(df, diagram="histplot", variable="target", kündiger_var=None, save_as=None)
+    diagram(df, diagram="histplot", variable="target", name_target=None, save_as=None)
     return df
 
 
-def Skalierung(df, scale_stratagy = "alle", columns_to_scale=None):
+def scaling(df, scale_strategy = "all", columns_to_scale=None):
     """
-    Wendet den Z-Score auf die Liste der übergebenen Variablen an. Per Default werden alle Variablen skaliert, 
-    die keine bool Variablen sind.
-    Empfohlen bei Logistic Regression aber nicht bei Decision Trees, Random Forest, XGBoost. Betsenfalls vorher
-    Transformieren und dann Z-Score anwenden.
-    
+    Applies Z-score standardization to the provided variables. By default, all non-boolean
+    columns are scaled.
+
+    Recommended for: logistic regression and other linear models; typically not needed
+    for tree-based models (Decision Trees, Random Forest, XGBoost). Prefer running
+    transform_skewness first, then applying the Z-score.
+
     Input:
-        df (pd.DataFrame): Ursprüngliches DataFrame
-        scale_stratagy (string): "alle" oder "ausgewählte"
-        variable (list): Name der Spalte im DataFrame, z.B. ["Variable_1"]
-        
+        df (pd.DataFrame): original DataFrame
+        scale_strategy (str): "all" (scale all non-boolean columns) or "only_chosen_variables" (scale only selected columns)
+        variable (list[str]): list of column names to scale when using "only_chosen_variables", e.g., ["Variable_1"]
+
     Output:
-        pd.DataFrame: DataFrame mit ggf. skalierten Variablen
-        Print Statement: Information über skalierte Variablen
-        pd.DataFrame durch stats(df): Übersicht mit deskreptiven Statistiken und Missings zu jeder Variable
-        csv durch stats(df): Übersicht mit deskreptiven Statistiken und Missings zu jeder Variable im Ordner Data/Exporte abgespeichert
+        pd.DataFrame: DataFrame with standardized variables (where applicable)
+        print: information about which variables were scaled
+        pd.DataFrame via stats(df): overview with descriptive statistics and missing values for each variable
     """
     
-    if scale_stratagy=="alle":
+    if scale_strategy=="all":
         columns = df.select_dtypes(include=['number']).columns
-    elif scale_stratagy=="ausgewählte":
+    elif scale_strategy=="only_chosen_variables":
     
-    for var in columns_to_scale:
-        df[var] = zscore(df[var])
-        print(f"{var} wurde mit dem zscore angepasst")
+        for var in columns_to_scale:
+            df[var] = zscore(df[var])
+            print(f"{var} were adjusted with z score")
 
     stats(df)
-
-
     return df
 
 
-def scatterplot(df, variable=None, kündiger_var="target"):
+def scatterplot(df, variable=None, name_target="target"):
     """
-    Macht Scatterplots für jede Kombination der übergebenen Variablen und speichert alle gemeinsam als Grid.
+    Creates scatter plots for every combination of the provided variables and saves them together as a grid.
 
     Input:
-        df (pd.DataFrame): unsere aktuellen Daten
-        variable (list): Liste mit Variablen 2 für Einzel-Scatterplot oder wenn None dann werden alle Variablen geplottet
-        kündiger_var (str): Zielvariable für die Farbe (Hue)
+        df (pd.DataFrame): our current data
+        variable (list or None): list with two variable names for a single scatter plot; if None, plot all pairwise combinations
+        name_target (str): target variable used for color mapping (hue)
     """
 
+    # plots for chosen variables
     if variable is not None:
         x, y = variable
-        sns.scatterplot(data=df, x=x, y=y, hue=kündiger_var if kündiger_var in df.columns else None)
+        sns.scatterplot(data=df, x=x, y=y, hue=name_target if name_target in df.columns else None)
         plt.tight_layout()
-        output_path = os.path.join("..", "Reports", "Scatterplot", f"Scatter_{x}_und_{y}.png")
-        plt.savefig(output_path, dpi=300)
+        plt.savefig(f"scatter_{x}_and_{y}.png", dpi=300)
         plt.close()
         return
 
-    # Plots für alle Variablen
-    variablen = df.select_dtypes(include='number').columns.tolist()
-    kombis = list(itertools.combinations(variablen, 2))
+    # plots for all variables
+    variable = df.select_dtypes(include='number').columns.tolist()
+    combination = list(itertools.combinations(variable, 2))
 
-    # Für jede Variable v ein eigenes Grid
-    for v in variablen:
-        relevante_kombis = [(x_var, y_var) for x_var, y_var in kombis if v in (x_var, y_var)]
+    for v in variable:
+        relevant_combination = [(x_var, y_var) for x_var, y_var in combination if v in (x_var, y_var)]
 
         fig, axes = plt.subplots(nrows=5, ncols=5, figsize=(20, 20))
         axes = axes.flatten()
 
-        for idx, (x_var, y_var) in enumerate(relevante_kombis):
+        for idx, (x_var, y_var) in enumerate(relevant_combination):
             if idx >= len(axes):
                 break
             sns.scatterplot(
                 data=df,
                 x=x_var,
                 y=y_var,
-                hue=kündiger_var if kündiger_var in df.columns else None,
-                ax=axes[idx]                        # <-- hier!
+                hue=name_target if name_target in df.columns else None,
+                ax=axes[idx]
             )
 
-        # Restliche leere Achsen entfernen
-        for ax in axes[len(relevante_kombis):]:
+        # remove irrelevant axe
+        for ax in axes[len(relevant_combination):]:
             fig.delaxes(ax)
 
         plt.tight_layout()
@@ -730,134 +782,157 @@ def scatterplot(df, variable=None, kündiger_var="target"):
         plt.close()
 
 
-
-def diagram(df, diagram="boxplot", variable=None, kündiger_var="target", save_as="Plot.png", titel=None):
+def diagram(df,
+            diagram="boxplot",
+            variable=None,
+            name_target="target",
+            title=None):
     """
-    Macht Boxplots oder Histogramme für jede Variable im df oder die übergebene Variable in der Option variable, die als Liste übergeben wird.
-    Wenn kündiger_var gleich unsere Kündigervariable ist, wird der Plot unterteielt in Kündiger/Nichtkündiger, sonst kündiger_var=None wird
-    die gesamte Variable ohne Unterteilung betrachtet
+    Creates boxplot or histograms for each variable in the DataFrame, or for a specific
+    list of variables passed via `variable`. If `name_target` is provided, plots are
+    stratified by that target (e.g., Churner vs. Non-churner); if `name_target=None`,
+    the overall distribution is shown.
 
     Input:
-        df (pd.DataFrame): unsere aktuellen Daten
-        diagram (string): Betsimmt den Diagramtyp, Auswahl zwischen "boxplot", "histplot"
-        variable (list): Liste mit Variablen die als Boxplot ausgegeben werden soll, 
-        z.B. ["Variable_1"] , per default None damit alle ausgegeben werden
-        kündiger_var (string): per default unsere Kündigervariable, aber wenn None, dann wird einfachnur normales Boxplot ausgegeben
-        save_as (string): Name der abgespeicherten PNG Datei, wenn None nichts gespeichert
-    
+        df (pd.DataFrame): the current dataset
+        diagram (str): chart type; one of {"boxplot", "histplot"}
+        variable (list[str] or None): variables to plot; e.g., ["Variable_1"].
+            If None (default), plot all eligible variables.
+        name_target (str or None): target column used to split the plots by class (hue).
+            If None, no stratification is applied.
+        save_as (str or None): filename for saving the PNG output; if None, do not save
+
     Output:
-        Histogram/Boxplot Plots zu den übergebenen Variablen ggf. für Kündiger/Nichtkündiger
+        Plots: histogram(s)/boxplot(s) for the requested variable(s), optionally split by `name_target`
     """
 
-    # Plots für eine Variable
+
+    # plot for one  variable
     if variable is not None:
         plt.figure(figsize=(6, 4))
         if diagram == "boxplot":
-            if kündiger_var is None:
+            if name_target is None:
                 ax = sns.boxplot(y=df[variable])
             else:
-                ax = sns.boxplot(data=df, x=kündiger_var, y=variable)
+                ax = sns.boxplot(data=df, x=name_target, y=variable)
         elif diagram == "histplot":
-            if kündiger_var is None:
+            if name_target is None:
                 ax = sns.histplot(data=df, x=variable, bins=30, kde=False)
             else:
-                ax = sns.histplot(data=df, x=variable, hue=kündiger_var, bins=30, kde=False)
-        title_text = f"{variable}" if titel is None else f"{variable} – {titel}"
+                ax = sns.histplot(data=df, x=variable, hue=name_target, bins=30, kde=False)
+        title_text = f"{variable}" if title is None else f"{variable} – {title}"
         ax.set_title(title_text)
 
         plt.tight_layout()
-        if save_as:
-            plt.savefig(save_as, dpi=300)
         plt.show()
         return
 
     
-    # Plots für alle Variablen
+    # plots for all variables
     else:
         
-        variablen = df.select_dtypes(include='number').columns.tolist()
-        if kündiger_var in variablen:
-            variablen.remove(kündiger_var)
+        variable = df.select_dtypes(include='number').columns.tolist()
+        if name_target in variable:
+            variable.remove(name_target)
 
-        anzahl = len(variablen)
-        spalten = 3  # Anzahl Spalten im Grid
-        zeilen = math.ceil(anzahl / spalten)
+        count = len(variable)
+        columns = 3  # count rows in grid
+        rows = math.ceil(count / columns)
     
-        fig, axes = plt.subplots(zeilen, spalten, figsize=(spalten * 5, zeilen * 4))
-        axes = axes.flatten()  # macht 2D-Achsenarray zu 1D-Liste
+        fig, axes = plt.subplots(rows, columns, figsize=(columns * 5, rows * 4))
+        axes = axes.flatten()  # makes 2D array to a 1D list
     
-        for i, var in enumerate(variablen):
+        for i, var in enumerate(variable):
             ax = axes[i]
             if diagram == "boxplot":
-                if kündiger_var is None:
+                if name_target is None:
                     sns.boxplot(y=df[var], ax=ax)
                 else:
-                    sns.boxplot(data=df, x=kündiger_var, y=var, ax=ax)
+                    sns.boxplot(data=df, x=name_target, y=var, ax=ax)
     
             elif diagram == "histplot":
-                if kündiger_var is None:
+                if name_target is None:
                     sns.histplot(data=df, x=var, bins=30, kde=False, ax=ax)
                 else:
-                    sns.histplot(data=df, x=var, hue=kündiger_var, bins=30, kde=False, ax=ax)
+                    sns.histplot(data=df, x=var, hue=name_target, bins=30, kde=False, ax=ax)
                     
-            # Titel pro Subplot
-            if titel:
-                ax.set_title(f"{var} – {titel}")
+            # title for each subplot
+            if title:
+                ax.set_title(f"{var} - {title}")
     
-        # Leere Achsen ausblenden
+        # hide empty axe
         for j in range(i+1, len(axes)):
             axes[j].set_visible(False)
 
         plt.tight_layout()
-        if save_as!=None:
-            plt.savefig(save_as, dpi=300)
-
-  
     plt.show()
 
 
 def null_analyse(df):
-    # Anteil 0 pro Variable
+    """
+    Analyzes zero values per column and within the positive target class.
+
+    What it does:
+        - Computes the overall percentage of zeros for each column.
+        - Computes, among rows where target == 1, the percentage of zeros per column.
+        - Returns a summary DataFrame sorted by overall zero percentage.
+        - Flags "critical" variables (default rule: >99% zeros overall AND >99% zeros when target == 1).
+        - Prints a 2x2 contingency table (crosstab) for each critical variable.
+
+    Input:
+        df (pd.DataFrame): dataset containing a binary column 'target' (0/1).
+
+    Output:
+        pd.DataFrame: summary with columns
+            - 'variable'
+            - 'percent of 0 in each variable'
+            - 'How many percent of the target = 1 have 0 in this variable?'
+            - 'critical variable' (boolean)
+        print: crosstab for each critical variable
+    Notes:
+        - Assumes 'target' exists and is binary (0/1).
+        - If there are no rows with target == 1, the target-specific percentages are undefined.
+    """
+
+    # share of 0 in each variable
     zero_all = (df==0).sum() / len(df) *100
     
-    # Anzahl Kündiger
-    kündiger_anzahl = (df["target"] == 1).sum()
+    # count target = 1
+    target_count = (df["target"] == 1).sum()
     
-    # Anzahl von Kündigern mit 0 als ausprägung geteielt durch GesamtzahlKündiger
-    zero_kündiger = (df[df["target"] == 1] == 0).sum() / kündiger_anzahl * 100
-    
-    
-    
+    # percent target = 1 with 0
+    zero_target = (df[df["target"] == 1] == 0).sum() / target_count * 100
+
     zerodf = pd.DataFrame({
-        'Variable': df.columns,
-        'Prozent von Nullwerten je Variable': zero_all.round(2).values,
-        'Wie viel Prozent der Kündiger sind in der Variable 0?': zero_kündiger.round(2).values
+        'variable': df.columns,
+        'percent of 0 in each variable': zero_all.round(2).values,
+        'How many percent of the target = 1 have 0 in this variable?': zero_target.round(2).values
         
     })
     
     zerodf = zerodf.sort_values(
-        by='Prozent von Nullwerten je Variable',
+        by='percent of 0 in each variable',
         ascending=False
     ).reset_index(drop=True)
 
-    zerodf["Kritische Variable"] = (
-    (zerodf['Prozent von Nullwerten je Variable'] > 99)
+    zerodf["critical variable"] = (
+    (zerodf['percent of 0 in each variable'] > 99)
     &
-    (zerodf['Wie viel Prozent der Kündiger sind in der Variable 0?'] > 99)
+    (zerodf['How many percent of the target = 1 have 0 in this variable'] > 99)
     )
 
-    # Vierfeldertafel erstellen für Kritische Variablen
-    kritische_vars = zerodf.loc[zerodf["Kritische Variable"], 'Variable'].tolist()
+    # crosstab for critical variables
+    critical_vars = zerodf.loc[zerodf["critical Variable"], 'Variable'].tolist()
     
-    # Loop über die kritischen Variablen
-    for var in kritische_vars:
-        print(f"\nVierfeldertafel für {var}:\n")
+    # Loop for critical variables
+    for var in critical_vars:
+        print(f"\nCrosstab for {var}:\n")
         table = pd.crosstab(
             df[var] == 0,        
             df['target'],     
             rownames=[f"{var}"],
             colnames=['target'],
-            margins=True # fügt Gesamtsummen hinzu
+            margins=True # adds sum
         )
         print(table)
     return zerodf

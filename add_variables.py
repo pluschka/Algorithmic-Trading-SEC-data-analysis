@@ -31,7 +31,7 @@ all_df_of_close_data = (
 )
 
 # count of fillings per person
-# clean names becouse no id exported
+# clean names because no id exported
 all_df_of_close_data['reportingOwner.name'] = (
     all_df_of_close_data['reportingOwner.name']
     .str.replace(r'[^A-Za-z ]+', '', regex=True)
@@ -53,7 +53,7 @@ all_df_of_close_data = all_df_of_close_data.merge(
     how="left",
 )
 
-# high freuency trader
+# high frequency trader
 median = all_df_of_close_data['filing_count_reportingOwner.name'].median()
 
 all_df_of_close_data['high_frequency_trader'] = (
@@ -62,7 +62,7 @@ all_df_of_close_data['high_frequency_trader'] = (
     .astype('int8')
 )
 
-# Clusterbuys in past 14 days
+# Cluster buys in past 14 days
 df = all_df_of_close_data.copy()
 df['transactionDate'] = pd.to_datetime(df['transactionDate'], errors='coerce')
 
@@ -82,8 +82,8 @@ df = df.merge(roll, on=['issuer.tradingSymbol', 'transactionDate'], how='left')
 
 all_df_of_close_data = df
 
-# Clusterbuy dummy
-all_df_of_close_data['clusterbuy'] = (
+# Cluster buys dummy
+all_df_of_close_data['cluster_buy'] = (
     all_df_of_close_data['trades_14d'].gt(1)
     .astype('int8')
 )
@@ -107,18 +107,18 @@ holdings_before_filing = (
 )
 
 # calculation: (amount of shares in this filling/old amount holdings)*100 for
-# percent to know how much the person baught in comparison to what they owned
+# percent to know how much the person bought in comparison to what they owned
 # old amount of shares = post_shares - shares
 # if old amount of shares = 0 then division by 0 would cause problems
 all_df_of_close_data['holding_change_percent'] = np.where(
     holdings_before_filing == 0, 0, (all_df_of_close_data['amounts.shares'] /
                                      holdings_before_filing) * 100)
 
-# remove inplausible data (132 cases)
+# remove implausible data (132 cases)
 all_df_of_close_data = all_df_of_close_data[
     all_df_of_close_data['holding_change_percent'] >= 0]
 
-# high freqency trader
+# high frequency trader
 all_df_of_close_data['high_frequency_trader'] = (
     all_df_of_close_data['filing_count_reportingOwner.name'] >
     all_df_of_close_data['filing_count_reportingOwner.name']

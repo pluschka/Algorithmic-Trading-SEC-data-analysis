@@ -12,5 +12,5 @@ from get_close_data import concat_close_data
 # extract_relevant_from_jsonl(filename='2018-01')
 # get_close_data(filename='2018-01')
 
-# adjust in get_close_data.py the list of data acording to your file names and then do:
+# adjust in get_close_data.py the list of data according to your file names and then do:
 # all_df_of_close_data, expected_final_row_number = concat_close_data()

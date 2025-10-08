@@ -6,12 +6,12 @@ import itertools
 
 all_df_of_close_data = pd.read_csv('data/all_df_of_close_data.csv')
 
-# remove inplausible data
+# remove implausible data
 for num in range(364):
     all_df_of_close_data = all_df_of_close_data[
         all_df_of_close_data[f'{num}'] >= 0]
 
-# remove upper outlires
+# remove upper outliers
 df = all_df_of_close_data.copy()
 for num in range(364):
     q75, q25 = np.quantile(df[f'{num}'], [0.75, 0.25])
@@ -19,9 +19,6 @@ for num in range(364):
     df = df[df[f'{num}'] <= q75 + 1.5 * iqr]
 
 all_df_of_close_data = df
-
-
-# 1) Daten vorbereiten
 df = all_df_of_close_data.copy()
 
 day_cols = [str(i) for i in range(364)]
@@ -66,7 +63,7 @@ for ax in axs:
         spine.set_visible(False)
 
 plt.tight_layout()
-plt.savefig('exports/descriptives_random_state_69.png', dpi=500)
+plt.savefig('exports/descriptive_random_state_69.png', dpi=500)
 plt.show()
 
 
@@ -253,8 +250,8 @@ sns.boxplot(data=all_df_of_close_data,
             ax=ax[0, 1])
 
 
-# remove upper outlires in filing_count_reportingOwner.name
-# for better look at the boxplots
+# remove upper outliers in filing_count_reportingOwner.name
+# for better look at the boxplot
 df = all_df_of_close_data.copy()
 q75, q25 = np.quantile(df[f'{'filing_count_reportingOwner.name'}'],
                        [0.75, 0.25])
@@ -270,8 +267,8 @@ sns.boxplot(data=df,
             y='filing_count_reportingOwner.name',
             ax=ax[1, 1])
 
-# remove upper outlires once more in filing_count_reportingOwner.name
-# for better look at the boxplots
+# remove upper outliers once more in filing_count_reportingOwner.name
+# for better look at the boxplot
 df1 = df.copy()
 q75, q25 = np.quantile(df1[f'{'filing_count_reportingOwner.name'}'],
                        [0.75, 0.25])
@@ -307,7 +304,7 @@ ax[0].set_xlabel('Frequency')
 ax[0].set_ylabel('Count')
 
 ax[1].hist(df['filing_count_reportingOwner.name'], bins=100)
-ax[1].set_title('Without Outlires')
+ax[1].set_title('Without Outliers')
 ax[1].set_xlabel('Frequency')
 ax[1].set_ylabel('Count')
 
@@ -383,22 +380,22 @@ for s in ax[1].spines.values():
 plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
 plt.show()
 
-# Histogram of Clusterbuys
+# histogram of cluster buys
 fig, ax = plt.subplots(2, 1, figsize=(12, 6))
-fig.suptitle("Histogram of Clusterbuys", fontsize=14)
+fig.suptitle("Histogram of cluster buys", fontsize=14)
 ax[0].hist(all_df_of_close_data['trades_14d'], bins=100)
 ax[0].set_title('Raw data')
 ax[0].set_xlabel('Amount of fillings on one Ticker in past 14 days')
 ax[0].set_ylabel('Count')
 
-# remove upper outlires in trades_14d for better look
+# remove upper outliers in trades_14d for better look
 df = all_df_of_close_data.copy()
 q75, q25 = np.quantile(df['trades_14d'], [0.75, 0.25])
 iqr = q75 - q25
 df = df[df['trades_14d'] <= q75 + 1.5 * iqr]
 
 ax[1].hist(df['trades_14d'], bins=100)
-ax[1].set_title('Without Outlires')
+ax[1].set_title('Without outliers')
 ax[1].set_xlabel('Amount of fillings on one Ticker in past 14 days')
 ax[1].set_ylabel('Count')
 
@@ -418,28 +415,28 @@ for axe in axes:
 plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
 plt.show()
 
-# Do clusterbuys hit often target variables then no clusterbuys?
+# Do cluster buys hit often target variables then no cluster buys?
 counts_t_1_percent_change_since_4d = (
     all_df_of_close_data
-    .groupby(['clusterbuy', 't_1_percent_change_since_4d'])
+    .groupby(['cluster_buy', 't_1_percent_change_since_4d'])
     .size()
     .unstack(fill_value=0))
 
 counts_t_10_percent_change_since_198d = (
     all_df_of_close_data
-    .groupby(['clusterbuy', 't_10_percent_change_since_198d'])
+    .groupby(['cluster_buy', 't_10_percent_change_since_198d'])
     .size()
     .unstack(fill_value=0))
 
 
 x = np.array([0, 1])
-labels = ['No clusterbuy', 'Clusterbuy']
+labels = ['No cluster buy', 'cluster buy']
 width = 0.4
 
 colors = ["#E1DEDE", 'tab:blue']
 
 fig, ax = plt.subplots(2, 1, figsize=(12, 10))
-fig.suptitle("Do clusterbuys hit often target variables then no clusterbuys?",
+fig.suptitle("Do cluster buys hit often target variables then no cluster buys?",
              fontsize=14)
 for i, col in enumerate(counts_t_1_percent_change_since_4d.columns):
     ax[0].bar(x + i*width,
@@ -540,14 +537,14 @@ ax[0].set_xlabel('Change of holding of one insider due to this filling in '
                  'percent')
 ax[0].set_ylabel('Count')
 
-# remove upper outlires in trades_14d for better look
+# remove upper outliers in trades_14d for better look
 df = all_df_of_close_data.copy()
 q75, q25 = np.quantile(df['holding_change_percent'], [0.75, 0.25])
 iqr = q75 - q25
 df = df[df['holding_change_percent'] <= q75 + 1.5 * iqr]
 
 ax[1].hist(df['holding_change_percent'], bins=100)
-ax[1].set_title('Without Outlires')
+ax[1].set_title('Without outliers')
 ax[1].set_xlabel('Change of holding of one insider due to this filling in '
                  'percent')
 ax[1].set_ylabel('Count')
@@ -649,17 +646,17 @@ def scatterplot(df, variable=None, target_compare="target"):
         return
 
     # plot for all variables
-    variablen = df.select_dtypes(include='number').columns.tolist()
-    kombis = list(itertools.combinations(variablen, 2))
+    variable = df.select_dtypes(include='number').columns.tolist()
+    combination = list(itertools.combinations(variable, 2))
 
-    for v in variablen:
-        relevante_kombis = [(x_var, y_var) for x_var, y_var in kombis if v in
+    for v in variable:
+        relevant_combination = [(x_var, y_var) for x_var, y_var in combination if v in
                             (x_var, y_var)]
 
         fig, axes = plt.subplots(nrows=5, ncols=5, figsize=(20, 20))
         axes = axes.flatten()
 
-        for idx, (x_var, y_var) in enumerate(relevante_kombis):
+        for idx, (x_var, y_var) in enumerate(relevant_combination):
             if idx >= len(axes):
                 break
             sns.scatterplot(
@@ -670,14 +667,13 @@ def scatterplot(df, variable=None, target_compare="target"):
                 ax=axes[idx]
             )
 
-        # Restliche leere Achsen entfernen
-        for ax in axes[len(relevante_kombis):]:
+        for ax in axes[len(relevant_combination):]:
             fig.delaxes(ax)
 
         plt.tight_layout()
         plt.savefig('exports/scatterplot/scatter.png', dpi=300)
         plt.close()
 
-# scatterplot(relevant_data_without_outlires,
+# scatterplot(relevant_data_without_outliers,
 # variable=None,
 # target_compare="target")
