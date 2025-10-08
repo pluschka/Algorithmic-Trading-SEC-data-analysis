@@ -11,79 +11,79 @@ from scipy.stats import boxcox, skew, zscore
 from sklearn.preprocessing import PowerTransformer
 from sklearn.utils import resample
 from pandas.api.types import is_numeric_dtype, is_object_dtype
+from IPython.display import display
 
 
 def stats(df):
     """
-    Ergänzt describe() um isna(), skew(), var(). Eine Übersicht des Ergebnisses wird im Ordner Data/Exporte abgespeichert.
-    skew() in Excel =SCHIEFE(A2:A11)
-    var() ist äquivalent zu VARIANZA() in Excel für Binäre Variable und VAR.P() für die restlichen numerischen Variablen in Excel.
-    
+    Adds isna(), skew(), and var() on top of describe(). An overview of the results is saved in the export folder.
+    skew() in Excel = SKEW(A2:A11)
+    var() is equivalent to VAR.S in Excel for binary variables and VAR.P for the remaining numeric variables.
+
     Input:
-        df (pd.DataFrame): unsere aktuellen Daten
+    df (pd.DataFrame): our current data
 
     Output:
-        pd.DataFrame: Übersicht mit deskreptiven Statistiken und Missings zu jeder Variable
-        csv: Übersicht mit deskreptiven Statistiken und Missings zu jeder Variable im Ordner Data/Exporte abgespeichert
+    pd.DataFrame: overview with descriptive statistics and missing values for each variable
+    csv: the same overview saved to Data/Exporte
     """
-    # Beschreibung des DataFrames
+    # describe dataframes
     description = df.describe(include="all").T
 
-    # Skewness nur für numerische Spalten berechnen
+    # compute skewness for numeric columns only
     skew = pd.DataFrame(df.select_dtypes(include=[np.number]).skew(), columns=["skew"])
     
-    # Skewness nur für numerische Spalten berechnen
+    # compute variance for numeric columns only
     var = pd.DataFrame(df.select_dtypes(include=[np.number]).var(), columns=["var"])
     
-    # Datentypen der Spalten anzeigen
+    # show column data types
     dtypes = pd.DataFrame(df.dtypes, columns=['dtype'])
     
-    # Anzahl der NAs berechnen und als DataFrame speichern
+    # compute NA counts and store as a DataFrame
     na_counts = pd.DataFrame(df.isna().sum(), columns=['na_count'])
     
-    # Statistiken verjoinen
+    # merge statistics
     descriptives = dtypes.join(na_counts).join(description).join(skew).join(var)
 
-    # Anzeigeformat für floats ändern, da Varianzen in wissenschaftliche Schreibweise ausgegeben werden
+    # change float display format since variances are shown in scientific notation
     descriptives['var'] = descriptives['var'].apply(lambda x: f"{x:.6f}" if pd.notnull(x) else x)
 
-    
-    # Alle Zeilen und Spalten anzeigen lassen
+    # display all rows and columns
     with pd.option_context('display.max_rows', None, 'display.max_columns', None):
         display(descriptives)
 
 def clean_dtypes(df):
     """
-    Überarbeitet die Datentypen
-    - Zuerst alle 0/1, die kein bool sind zu bool
-    - Strings via One-Hot-Encoding zu bool
-    - alle restlichen numerischen Variablen einheitlich zu float umwandeln
+    Standardizes data types
+    - First, convert all 0/1 columns that are not boolean to boolean
+    - Convert string columns to boolean via one-hot encoding
+    - Convert all remaining numeric variables uniformly to float
 
     Input:
-        df (pd.DataFrame): unsere aktuellen Daten
-        max_unique_cats (int): Maximale Anzahl an Kategorien, um String-Spalten zu One-Hot-Encodieren
+        df (pd.DataFrame): our current data
+        max_unique_cats (int): Maximum number of categories for one-hot encoding string columns
 
     Output:
-        pd.DataFrame: Bereinigter DataFrame mit numerischen und boolschen Spalten
+        pd.DataFrame: cleaned DataFrame with numeric and boolean columns
     """
 
-    # Binärwerte erkennen und in bool umwandeln
+    # detect binary values and convert to boolean
     for col in df.columns:
         if df[col].nunique(dropna=False) == 2 and df[col].dropna().isin([0, 1]).all(): # all() function returns True if all items in an iterable are true, otherwise it returns False.
             df[col] = df[col].astype(bool)
 
-    # Strings verarbeiten
+    # process string columns
     string_columns = df.select_dtypes(include='object').columns.tolist()
     
-    # wenn string Variable dann One-Hot-Encoding (zu jeder Ausprägung ein bool generieren)
-    if string_columns: #  the get_dummies() function converts categorical variables into dummy/indicator variables (known as one-hot encoding)
+    # if there are string columns, apply one-hot encoding (create a boolean for each category)
+    if string_columns:  # get_dummies() converts categorical variables into dummy/indicator variables (one-hot encoding)
         df = pd.get_dummies(df, columns=string_columns, drop_first=True)
     
-    # Alles numerisch machen, was geht
+    # convert everything to numeric where possible
     for col in df.columns:
         if not is_numeric_dtype(df[col]) and not df[col].dtype == bool:
             try:
-                # df[col] = df[col].astype(str).str.replace(",", ".").str.replace(" ", "") # sonst gehen die Nachkommastellen verloren
+                # df[col] = df[col].astype(str).str.replace(",", ".").str.replace(" ", "")  # otherwise decimal places get lost
                 df[col] = pd.to_numeric(df[col], errors='coerce')
             except:
                 pass
@@ -91,98 +91,25 @@ def clean_dtypes(df):
     return df
 
 
-def Differenz(df):
-    """
-    Bildet paarweise Differenzen zu allen T1 und T2 Werten. Die neuen Differenzspalten werden an den bestehenden Datensatz rangejoint.
-    Binäre Variable werden in integer umgewandelt für die Differenzbildung.
-    T1 - T2 = diff
-
-    Bei der Selektion aus der IDA müssen alle T1 Variablen einheitlich "(Leerzeichen) T1" benannt werden genauso für T2.  
-    T1 = 1 Monat vor Kündigung  
-    T2 = 6 Monate vor Kündigung
-        
-    Input:
-        df (pd.DataFrame): unsere aktuellen Daten mit konstanten Variablen, T1 und T2 Variablen
-    
-    Output:
-        Neues df (pd.DataFrame): mit konstanten Variablen, T1, T2 und den neuen diff Variablen
-    """
-    # Prüfen, ob bereits 'diff'-Spalten existieren
-    if any('diff' in col for col in df.columns):
-        return df
-
-    
-    # Alle Spaltennamen extrahieren
-    columns = df.columns
-    
-    # Spalten, die 'T1' und 'T2' enthalten
-    t1_columns = [col for col in columns if 'T1' in col]
-    t2_columns = [col for col in columns if 'T2' in col]
-    
-    # Leere Liste für neue Differenz Spalten
-    diff_columns = {}
-    
-    # Berechne die Differenz für die entsprechenden Paare
-    for t2_col in t2_columns:
-        # Finde das zugehörige T1
-        t1_col = t2_col.replace('T2', 'T1')
-        
-        if t1_col in t1_columns:
-            # Berechne die Differenz und speichere sie mit einem neuen Spaltennamen
-            diff_col_name = t2_col.replace('T2', 'diff')
-            diff_columns[diff_col_name] = df[t1_col].astype(int) - df[t2_col].astype(int) # True/False Werte kann man nicht subtrahieren deswegen .astype(int)
-    
-    df = pd.concat([df, pd.DataFrame(diff_columns)], axis=1)
-
-    return df
-
-def split_data(df):
-    """
-    Teielt den Datensatz auf in T1_data, T2_data und diff_data. Die dfs bestehen aus den konstanten Kennzahlen, die sich nicht über die 
-    Zeit ändern.
-        
-    Input:
-        df (pd.DataFrame): unsere aktuellen Daten mit konstanten Kennzahlen, T1, T2 und diff Variablen
-    
-    Output:
-        T1_df (pd.DataFrame): mit konstanten Kennzahlen + T1 Variablen
-        T2_df (pd.DataFrame): mit konstanten Kennzahlen + T2 Variablen
-        diff_df (pd.DataFrame): mit konstanten Kennzahlen + diff Variablen
-    """
-    # Alle Spaltennamen extrahieren
-    columns = df.columns
-    
-    # Spalten, die 'T1' und 'T2' enthalten
-    t1_columns = [col for col in columns if ' T1' in col]
-    t2_columns = [col for col in columns if ' T2' in col]
-    diff_columns = [col for col in columns if ' diff' in col]
-    konst_columns = [col for col in columns if ' T1' not in col and ' T2' not in col and ' diff' not in col]
-
-    T1_df = df[konst_columns + t1_columns]
-    T2_df = df[konst_columns + t2_columns]
-    diff_df = df[konst_columns + diff_columns]
-
-    return T1_df, T2_df, diff_df
-
-
 def missing_values_summary(df):
     """
-    Gibt eine Übersicht über alle Spalten mit fehlenden Werten in einem DataFrame.
+    Provides an overview of all columns with missing values in a DataFrame.
 
     Input:
-        df (pd.DataFrame): unsere aktuellen Daten
+        df (pd.DataFrame): our current data
 
     Output:
-        Neues df (pd.DataFrame): Variablennamen mit dazugehörige NA Anzahl und Prozentanteil
+        New df (pd.DataFrame): variable names with their NA count and percentage
+        (rounded to 2 decimals), sorted by NA count in descending order.
     """
     total = df.isnull().sum()
     percent = (total / len(df)) * 100
     missing = pd.DataFrame({
-        'Anzahl_NaNs': total,
-        'Prozent_NaNs': percent.round(2)
+        'na_count': total,
+        'percent of na': percent.round(2)
     })
-    missing = missing[missing['Anzahl_NaNs'] > 0]
-    missing = missing.sort_values(by='Anzahl_NaNs', ascending=False)
+    missing = missing[missing['na_count'] > 0]
+    missing = missing.sort_values(by='na_count', ascending=False)
     
     return missing
 
@@ -237,6 +164,8 @@ def plot_heatmap(df):
     plt.figure(figsize=(12, 10))
     sns.heatmap(corr_matrix, cmap='coolwarm', center=0)
     plt.show() 
+
+#plot_heatmap(relevant_data_uncleaned)
 
 
 def Korrelation(df, correlation_threshold = 0.8, df_name="df", target_col="target", never_drop="target"):
@@ -332,7 +261,6 @@ def Korrelation(df, correlation_threshold = 0.8, df_name="df", target_col="targe
     return df, removed_details, corr_matrix
 
 
-
 def Varianz(df, variance_threshold = 0.1, target_corr_threshold = 0.2, df_name="df", target_col="TF_Kündiger", never_drop=["TF_Kündiger"]):
     """
     Berechnet die Varianz jeder Variable.
@@ -386,60 +314,74 @@ def Varianz(df, variance_threshold = 0.1, target_corr_threshold = 0.2, df_name="
         
     return df
 
+""""Varianz(relevant_data_without_outlires, 
+        variance_threshold = 0.1,
+        target_corr_threshold = 0.2,
+        df_name="relevant_data_without_outlires",
+        target_col="t_1_percent_change_since_4d",
+        never_drop=["t_1_percent_change_since_4d"])
+
+"""
 
 def Ausreißer(df, default_outlier_strategy = "delete", except_replace_0=[], except_replace_mean=[], except_delete=[], ignore=[]):
-
-    for column in df.select_dtypes(include=['number']).columns:
-        if column in ignore: 
+    cols = df.columns
+    df = df[cols].apply(pd.to_numeric, errors='coerce')
+    for cols in df.select_dtypes(include=['number']).columns:
+        if cols in ignore: 
             continue
         # Q1, Q3 und IQR berechnen
-        Q1 = df[column].quantile(0.25)
-        Q3 = df[column].quantile(0.75)
+        Q1 = df[cols].quantile(0.25)
+        Q3 = df[cols].quantile(0.75)
         IQR = Q3 - Q1
 
         # Definiere die Grenzen für Ausreißer
         lower_bound = Q1 - 1.5 * IQR
         upper_bound = Q3 + 1.5 * IQR
 
-        if column in except_replace_0:
-            df.loc[:, column] = df[column].apply(
+        if cols in except_replace_0:
+            df.loc[:, cols] = df[cols].apply(
                 lambda x: 0 if x < lower_bound or x > upper_bound else x)
-        elif column in except_replace_mean:
-            mean_val = df[column].mean()
-            df.loc[:, column] = df[column].apply(
+        elif cols in except_replace_mean:
+            mean_val = df[cols].mean()
+            df.loc[:, cols] = df[cols].apply(
                 lambda x: mean_val if x < lower_bound or x > upper_bound else x)
-        elif column in except_delete:
-            df = df[~((df[column] < lower_bound) | (df[column] > upper_bound))]
+        elif cols in except_delete:
+            df = df[~((df[cols] < lower_bound) | (df[cols] > upper_bound))]
         else:
             # Default Strategie
             if default_outlier_strategy == "replace_0":
-                df[column] = df[column].apply(
+                df[cols] = df[cols].apply(
                     lambda x: 0 if x < lower_bound or x > upper_bound else x)
             elif default_outlier_strategy == "replace_mean":
-                mean_val = df[column].mean()
-                df[column] = df[column].apply(
+                mean_val = df[cols].mean()
+                df[cols] = df[cols].apply(
                     lambda x: mean_val if x < lower_bound or x > upper_bound else x)
             elif default_outlier_strategy == "delete":
-                df = df[~((df[column] < lower_bound) | (df[column] > upper_bound))]
+                df = df[~((df[cols] < lower_bound) | (df[cols] > upper_bound))]
     return df
+#Ausreißer(relevant_data_uncleaned, default_outlier_strategy = "delete", except_replace_0=[], except_replace_mean=[], except_delete=[], ignore=[])
 
 
-def count_outlires(df, column):
-    cols = df.columns
+def count_outliers(df, columns=None, iqr_k=1.5):
+    cols = df.columns if columns is None else list(columns)
 
     # 1) Alles numerisch erzwingen (Nicht-Numerisches -> NaN)
-    df = df[cols].apply(pd.to_numeric, errors='coerce')
-    # Q1, Q3 und IQR berechnen
-    Q1 = df[cols].quantile(0.25)
-    Q3 = df[cols].quantile(0.75)
-    IQR = Q3 - Q1
+    num = df[cols].apply(pd.to_numeric, errors='coerce')
 
-    # Definiere die Grenzen für Ausreißer
-    lower_bound = Q1 - 1.5 * IQR
-    upper_bound = Q3 + 1.5 * IQR
-    outlier_count = df[column].apply(lambda x: x < lower_bound or x > upper_bound).sum()
-    return outlier_count
+    # 3) Quantile/IQR
+    Q1 = num.quantile(0.25)
+    Q3 = num.quantile(0.75)
+    IQR = (Q3 - Q1).astype(float)
 
+    # 4) Grenzen + Outlier-Maske (spaltenweise Alignment!)
+    lb = (Q1 - float(iqr_k) * IQR).astype(float)
+    ub = (Q3 + float(iqr_k) * IQR).astype(float)
+    mask = num.lt(lb, axis=1) | num.gt(ub, axis=1)
+
+    return mask.sum().sort_values(ascending=False)
+ 
+
+#stats(df_important)
 #count_outliers(df_important, column)
 
 def Ausreißerstrategievgl(df, kündiger_var="target"):
@@ -704,7 +646,7 @@ def balance(df, kündiger_var="target"):
     return df
 
 
-def Skalierung(df, scale_stratagy = "alle", variable=None):
+def Skalierung(df, scale_stratagy = "alle", columns_to_scale=None):
     """
     Wendet den Z-Score auf die Liste der übergebenen Variablen an. Per Default werden alle Variablen skaliert, 
     die keine bool Variablen sind.
@@ -725,9 +667,9 @@ def Skalierung(df, scale_stratagy = "alle", variable=None):
     
     if scale_stratagy=="alle":
         columns = df.select_dtypes(include=['number']).columns
-    elif scale_stratagy=="ausgewählte": columns = variable
+    elif scale_stratagy=="ausgewählte":
     
-    for var in columns:
+    for var in columns_to_scale:
         df[var] = zscore(df[var])
         print(f"{var} wurde mit dem zscore angepasst")
 
