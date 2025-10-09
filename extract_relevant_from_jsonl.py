@@ -85,7 +85,7 @@ def extract_relevant_from_jsonl(filename='2018-01'):
     insider_data = insider_data[
                    insider_data['transactionDate'] >= min_transactionDate]
 
-    # nomralize ticker
+    # normalize ticker
     insider_data['issuer.tradingSymbol'] = (
         insider_data['issuer.tradingSymbol']
         .astype(str)

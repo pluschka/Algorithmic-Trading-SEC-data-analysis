@@ -416,7 +416,7 @@ def outlier_strategy(df,
 
 def count_outliers(df, columns=None, iqr_k=1.5):
     """
-    Makes a table summary of amount of outliers in df.
+    Makes a table summary of amount of outliers in df. No strings no bools in df.
     """
     cols = df.columns if columns is None else list(columns)
 
@@ -436,7 +436,7 @@ def count_outliers(df, columns=None, iqr_k=1.5):
     # summarize outliers table
     return mask.sum().sort_values(ascending=False)
 
-#count_outliers(df_important, column)
+#count_outliers(relevant_data_uncleaned.select_dtypes(exclude="bool"), columns=None, iqr_k=1.5)
 
 def outlier_strategy_comparison(df, name_target="target_variable"):
     variables = df.select_dtypes(include='number').columns.tolist()
@@ -613,8 +613,8 @@ def transform_skewness(df, variable=None, transformation=None):
 
     Notes:
         - log(x) and boxcox(x) are not applicable to negative values
-        (log requires x > 0; Box–Cox requires x > 0).
-        - power_transform refers to scikit-learn’s Yeo–Johnson (works with zeros and negatives).
+        (log requires x > 0; Box-Cox requires x > 0).
+        - power_transform refers to scikit-learns Yeo-Johnson (works with zeros and negatives).
 
     Output:
         pd.DataFrame: DataFrame with the column transformed (and renamed if applicable)

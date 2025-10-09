@@ -3,7 +3,9 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import itertools
+from data_cleaning import outlier_strategy
 
+# plot total price development of a 300 sample
 all_df_of_close_data = pd.read_csv('data/all_df_of_close_data.csv')
 
 # remove implausible data
@@ -66,26 +68,79 @@ plt.tight_layout()
 plt.savefig('exports/descriptive_random_state_69.png', dpi=500)
 plt.show()
 
-
-# Histogram of Price on Filing date
+# Histogram of shares
+relevant_data_uncleaned = pd.read_csv('data/relevant_data_uncleaned.csv')
+relevant_data_uncleaned_outliers_removed = outlier_strategy(relevant_data_uncleaned, 
+default_outlier_strategy = "delete",
+except_replace_0=[],
+except_replace_mean=[],
+except_delete=[],
+ignore=[])
+relevant_data_uncleaned_outliers_removed.shape
 fig, ax = plt.subplots(1, 1, figsize=(12, 6))
-
-ax.hist(all_df_of_close_data['0'], bins=100)
-ax.set_title('Histogram of Price on Filing date')
-ax.set_xlabel('Price')
+fig.suptitle("Histogram of Number of Shares", fontsize=14)
+ax.hist(relevant_data_uncleaned_outliers_removed['amounts.shares'], bins=50)
+ax.set_xlabel('Amount of shares')
 ax.set_ylabel('Count')
 
-# Spines aus
+median = relevant_data_uncleaned_outliers_removed['amounts.shares'].median()
+
+for s in ax.spines.values():
+    s.set_visible(False)
+ax.axvline(median, linestyle="--", lw=1, c="red")
+ax.text(median,
+                ax.get_ylim()[1]*+1.12,
+                f"median\n{median:.0f}",
+                va="top",
+                ha="center",
+                color="red")
+
+mean = relevant_data_uncleaned_outliers_removed['amounts.shares'].mean()
+
+for s in ax.spines.values():
+    s.set_visible(False)
+ax.axvline(mean, linestyle="--", lw=1, c="green")
+ax.text(mean,
+                ax.get_ylim()[1]*+1.12,
+                f"mean\n{mean:.0f}",
+                va="top",
+                ha="center",
+                color="green")
+
+plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
+plt.show()
+
+
+# histogram of price
+fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+fig.suptitle("Histogram of Number of Price per share", fontsize=14)
+ax.hist(relevant_data_uncleaned_outliers_removed['amounts.pricePerShare'], bins=50)
+ax.set_xlabel('Amount of Price per share')
+ax.set_ylabel('Count')
+
+median = relevant_data_uncleaned_outliers_removed['amounts.pricePerShare'].median()
+
 for s in ax.spines.values():
     s.set_visible(False)
 
-ax.axvline(7.03, linestyle="--", lw=1, c="red")
-ax.text(7.03, ax.get_ylim()[1]*-0.02, "median7.03$",
-        va="top", ha="center", color="red")
+ax.axvline(median, linestyle="--", lw=1, c="red")
+ax.text(median,
+        ax.get_ylim()[1] * 1.12,
+        f"median\n{median:.0f}",
+        va="top", ha="right", color="red", clip_on=False)
 
-plt.tight_layout()
+mean = relevant_data_uncleaned_outliers_removed['amounts.pricePerShare'].mean()
+
+for s in ax.spines.values():
+    s.set_visible(False)
+ax.axvline(mean, linestyle="--", lw=1, c="green")
+ax.text(mean,
+        ax.get_ylim()[1] * 1.12,
+        f"mean\n{mean:.0f}",
+        va="top", ha="left", color="green", clip_on=False)
+
+plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
 plt.show()
-
 
 # Mean Returns for one share each filling
 x_0 = all_df_of_close_data['0'].to_numpy()[:, None]
@@ -294,35 +349,6 @@ for axe in axes:
 plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
 plt.show()
 
-
-# Histogram of Price on Filing date
-fig, ax = plt.subplots(2, 1, figsize=(12, 6))
-fig.suptitle("Histogram of frequency of trades of an insider", fontsize=14)
-ax[0].hist(all_df_of_close_data['filing_count_reportingOwner.name'], bins=100)
-ax[0].set_title('Raw data')
-ax[0].set_xlabel('Frequency')
-ax[0].set_ylabel('Count')
-
-ax[1].hist(df['filing_count_reportingOwner.name'], bins=100)
-ax[1].set_title('Without Outliers')
-ax[1].set_xlabel('Frequency')
-ax[1].set_ylabel('Count')
-
-median = all_df_of_close_data['filing_count_reportingOwner.name'].median()
-axes = [0, 1]
-for axe in axes:
-    for s in ax[axe].spines.values():
-        s.set_visible(False)
-    ax[axe].axvline(median, linestyle="--", lw=1, c="red")
-    ax[axe].text(median,
-                 ax[axe].get_ylim()[1]*+1.12,
-                 f"median {median}",
-                 va="top",
-                 ha="center",
-                 color="red")
-
-plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
-plt.show()
 
 
 # Do High Frequency trader have different trades than low frequency traders

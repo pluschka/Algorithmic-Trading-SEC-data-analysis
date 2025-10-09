@@ -15,6 +15,7 @@
         "linestyle",
         "nanmean",
         "rownames",
+        "scikit",
         "sharex",
         "skipna",
         "suptitle",

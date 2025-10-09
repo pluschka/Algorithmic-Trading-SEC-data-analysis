@@ -11,25 +11,6 @@ all_df_of_close_data['direct_ownership'] = (
 all_df_of_close_data['transaction_month'] = pd.DatetimeIndex(
     all_df_of_close_data['transactionDate']).month
 
-# recession dummy from https://fred.stlouisfed.org/release?rid=242
-recession_dummy = pd.read_csv('data/recession_dummy/daily,_7-day.csv')
-recession_dummy['USRECD'] = recession_dummy['USRECD'].astype('int8')
-all_df_of_close_data['transactionDate'] = (
-    pd.to_datetime(all_df_of_close_data['transactionDate'], utc=True)
-)
-recession_dummy['observation_date'] = pd.to_datetime(
-    recession_dummy['observation_date'], utc=True).dt.normalize()
-all_df_of_close_data = (
-    all_df_of_close_data
-    .merge(
-        recession_dummy,
-        left_on="transactionDate",
-        right_on="observation_date",
-        how="left",
-    )
-    .drop(columns=["observation_date"])
-)
-
 # count of fillings per person
 # clean names because no id exported
 all_df_of_close_data['reportingOwner.name'] = (
@@ -70,7 +51,6 @@ df['transactionDate'] = pd.to_datetime(df['transactionDate'], errors='coerce')
 daily = (df.groupby(['issuer.tradingSymbol', 'transactionDate']).size()
            .rename('n').reset_index())
 
-
 # rolling count for past 14 days of fillings for this ticker
 roll = (daily.set_index('transactionDate')
              .groupby('issuer.tradingSymbol')['n']
@@ -84,7 +64,7 @@ all_df_of_close_data = df
 
 # Cluster buys dummy
 all_df_of_close_data['cluster_buy'] = (
-    all_df_of_close_data['trades_14d'].gt(1)
+    all_df_of_close_data['trades_14d'].gt(1) # .gt() -> grater than
     .astype('int8')
 )
 
@@ -106,9 +86,9 @@ holdings_before_filing = (
     - all_df_of_close_data[shares]
 )
 
-# calculation: (amount of shares in this filling/old amount holdings)*100 for
+# calculation: (amount of shares in this filling/pre amount holdings)*100 for
 # percent to know how much the person bought in comparison to what they owned
-# old amount of shares = post_shares - shares
+# pre amount of shares = post_shares - shares
 # if old amount of shares = 0 then division by 0 would cause problems
 all_df_of_close_data['holding_change_percent'] = np.where(
     holdings_before_filing == 0, 0, (all_df_of_close_data['amounts.shares'] /
@@ -118,17 +98,12 @@ all_df_of_close_data['holding_change_percent'] = np.where(
 all_df_of_close_data = all_df_of_close_data[
     all_df_of_close_data['holding_change_percent'] >= 0]
 
-# high frequency trader
-all_df_of_close_data['high_frequency_trader'] = (
-    all_df_of_close_data['filing_count_reportingOwner.name'] >
-    all_df_of_close_data['filing_count_reportingOwner.name']
-    .median()).astype('int8')
-
 # high change in holdings dummy
 all_df_of_close_data['high_change_in_holdings'] = (
     all_df_of_close_data['holding_change_percent'] >
     all_df_of_close_data['holding_change_percent']
     .median()).astype('int8')
+
 
 # Target analysis
 days = [4, 198]  # interesting spike after 4 days and maximum return on day 198
