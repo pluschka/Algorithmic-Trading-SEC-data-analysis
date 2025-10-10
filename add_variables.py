@@ -64,7 +64,7 @@ all_df_of_close_data = df
 
 # Cluster buys dummy
 all_df_of_close_data['cluster_buy'] = (
-    all_df_of_close_data['trades_14d'].gt(1) # .gt() -> grater than
+    all_df_of_close_data['trades_14d'].gt(1)  # .gt() -> grater than
     .astype('int8')
 )
 
