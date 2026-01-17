@@ -4,9 +4,9 @@ import datetime
 import numpy as np
 
 
-def get_close_data(filename='2018-01'):
+def get_close_data(month='2018-01'):
     # load insider data
-    insider_data = pd.read_csv(f'data/relevant_{filename}.csv',
+    insider_data = pd.read_csv(f'data/relevant_{month}.csv',
                                delimiter=',')
 
     # get financial information for each ticker
@@ -54,7 +54,7 @@ def get_close_data(filename='2018-01'):
                           right_on='ticker',
                           how='inner').drop('ticker', axis=1)
 
-    close_data.to_csv(f'data/close_data_{filename}.csv',
+    close_data.to_csv(f'data/close_data_{month}.csv',
                       header=True,
                       index=False)
 
