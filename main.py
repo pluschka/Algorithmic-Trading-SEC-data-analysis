@@ -16,10 +16,9 @@ from get_close_data import concat_close_data
 #    for m in mm:
 #        filename = f"{y}-{m}"
 #        extract_relevant_from_jsonl(month=filename)
-#        get_close_data(month=filename)
+#        get_close_data(month=filename) #  or get_close_data(month=filename, horizon_days= 365)
 
-# adjust in get_close_data.py the list of data according to your file names and then do:
-# all_df_of_close_data, expected_final_row_number = concat_close_data()
+# concat_close_data(data_dir = "data/2026_01")
 
 
 

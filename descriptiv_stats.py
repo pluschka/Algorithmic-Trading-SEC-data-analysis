@@ -38,7 +38,7 @@ demean_mat = abs_mat - row_mean
 # calculate percentage since day 0
 ref = sample[day_cols[0]].to_numpy(dtype=float)[:, None]
 ref = np.where(ref == 0, np.nan, ref)
-percent_mat = (abs_mat - ref) / ref
+percent_mat = ((abs_mat - ref) / ref)*100
 
 x = np.arange(364)
 
