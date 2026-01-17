@@ -68,79 +68,6 @@ plt.tight_layout()
 plt.savefig('exports/descriptive_random_state_69.png', dpi=500)
 plt.show()
 
-# Histogram of shares
-relevant_data_uncleaned = pd.read_csv('data/relevant_data_uncleaned.csv')
-relevant_data_uncleaned_outliers_removed = outlier_strategy(relevant_data_uncleaned, 
-default_outlier_strategy = "delete",
-except_replace_0=[],
-except_replace_mean=[],
-except_delete=[],
-ignore=[])
-relevant_data_uncleaned_outliers_removed.shape
-fig, ax = plt.subplots(1, 1, figsize=(12, 6))
-fig.suptitle("Histogram of Number of Shares", fontsize=14)
-ax.hist(relevant_data_uncleaned_outliers_removed['amounts.shares'], bins=50)
-ax.set_xlabel('Amount of shares')
-ax.set_ylabel('Count')
-
-median = relevant_data_uncleaned_outliers_removed['amounts.shares'].median()
-
-for s in ax.spines.values():
-    s.set_visible(False)
-ax.axvline(median, linestyle="--", lw=1, c="red")
-ax.text(median,
-                ax.get_ylim()[1]*+1.12,
-                f"median\n{median:.0f}",
-                va="top",
-                ha="center",
-                color="red")
-
-mean = relevant_data_uncleaned_outliers_removed['amounts.shares'].mean()
-
-for s in ax.spines.values():
-    s.set_visible(False)
-ax.axvline(mean, linestyle="--", lw=1, c="green")
-ax.text(mean,
-                ax.get_ylim()[1]*+1.12,
-                f"mean\n{mean:.0f}",
-                va="top",
-                ha="center",
-                color="green")
-
-plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
-plt.show()
-
-
-# histogram of price
-fig, ax = plt.subplots(1, 1, figsize=(12, 6))
-fig.suptitle("Histogram of Number of Price per share", fontsize=14)
-ax.hist(relevant_data_uncleaned_outliers_removed['amounts.pricePerShare'], bins=50)
-ax.set_xlabel('Amount of Price per share')
-ax.set_ylabel('Count')
-
-median = relevant_data_uncleaned_outliers_removed['amounts.pricePerShare'].median()
-
-for s in ax.spines.values():
-    s.set_visible(False)
-
-ax.axvline(median, linestyle="--", lw=1, c="red")
-ax.text(median,
-        ax.get_ylim()[1] * 1.12,
-        f"median\n{median:.0f}",
-        va="top", ha="right", color="red", clip_on=False)
-
-mean = relevant_data_uncleaned_outliers_removed['amounts.pricePerShare'].mean()
-
-for s in ax.spines.values():
-    s.set_visible(False)
-ax.axvline(mean, linestyle="--", lw=1, c="green")
-ax.text(mean,
-        ax.get_ylim()[1] * 1.12,
-        f"mean\n{mean:.0f}",
-        va="top", ha="left", color="green", clip_on=False)
-
-plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
-plt.show()
 
 # Mean Returns for one share each filling
 x_0 = all_df_of_close_data['0'].to_numpy()[:, None]
@@ -184,6 +111,170 @@ for s in ax.spines.values():
     s.set_visible(False)
 
 plt.tight_layout()
+plt.show()
+
+
+# Histogram of shares
+relevant_data_uncleaned = pd.read_csv('data/relevant_data_uncleaned.csv')
+relevant_data_uncleaned_outliers_removed = \
+    outlier_strategy(relevant_data_uncleaned,
+                     default_outlier_strategy="delete",
+                     except_replace_0=[],
+                     except_replace_mean=[],
+                     except_delete=[],
+                     ignore=[])
+relevant_data_uncleaned_outliers_removed.shape
+fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+fig.suptitle("Histogram of Number of Shares", fontsize=14)
+ax.hist(relevant_data_uncleaned_outliers_removed['amounts.shares'], bins=50)
+ax.set_xlabel('Amount of shares')
+ax.set_ylabel('Count')
+
+median = relevant_data_uncleaned_outliers_removed['amounts.shares'].median()
+
+for s in ax.spines.values():
+    s.set_visible(False)
+ax.axvline(median, linestyle="--", lw=1, c="red")
+ax.text(median,
+        ax.get_ylim()[1]*+1.12,
+        f"median\n{median:.0f}",
+        va="top",
+        ha="center",
+        color="red")
+
+mean = relevant_data_uncleaned_outliers_removed['amounts.shares'].mean()
+
+for s in ax.spines.values():
+    s.set_visible(False)
+ax.axvline(mean, linestyle="--", lw=1, c="green")
+ax.text(mean,
+        ax.get_ylim()[1]*+1.12,
+        f"mean\n{mean:.0f}",
+        va="top",
+        ha="center",
+        color="green")
+
+plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
+plt.show()
+
+
+# histogram of price
+fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+fig.suptitle("Histogram of Number of Price per Share", fontsize=14)
+ax.hist(relevant_data_uncleaned_outliers_removed['amounts.pricePerShare'],
+        bins=50)
+ax.set_xlabel('Amount of Price per share')
+ax.set_ylabel('Count')
+
+median = relevant_data_uncleaned_outliers_removed['amounts.pricePerShare']\
+    .median()
+
+for s in ax.spines.values():
+    s.set_visible(False)
+
+ax.axvline(median, linestyle="--", lw=1, c="red")
+ax.text(median,
+        ax.get_ylim()[1] * 1.12,
+        f"median\n{median:.0f}",
+        va="top", ha="right", color="red", clip_on=False)
+
+mean = relevant_data_uncleaned_outliers_removed['amounts.pricePerShare'].mean()
+
+for s in ax.spines.values():
+    s.set_visible(False)
+ax.axvline(mean, linestyle="--", lw=1, c="green")
+ax.text(mean,
+        ax.get_ylim()[1] * 1.12,
+        f"mean\n{mean:.0f}",
+        va="top", ha="left", color="green", clip_on=False)
+
+plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
+plt.show()
+
+
+# Histogram of Post Transaction Holdings of Issuer
+fig, ax = plt.subplots(2, 1, figsize=(12, 10))
+fig.suptitle("Histogram of Post Transaction Holdings of Issuer", fontsize=14)
+ax[0].hist(relevant_data_uncleaned_outliers_removed['postTransactionAmounts.sharesOwnedFollowingTransaction'], bins=100)
+ax[0].set_title('Outlier removed once', y=1.1)
+ax[0].set_xlabel('Amount of Holdings after Filing')
+ax[0].set_ylabel('Count')
+
+# remove upper outliers in postTransactionAmounts.sharesOwnedFollowingTransaction for better look
+df = relevant_data_uncleaned_outliers_removed.copy()
+q75, q25 = np.quantile(df['postTransactionAmounts.sharesOwnedFollowingTransaction'], [0.75, 0.25])
+iqr = q75 - q25
+df = df[df['postTransactionAmounts.sharesOwnedFollowingTransaction'] <= q75 + 1.5 * iqr]
+
+ax[1].hist(df['postTransactionAmounts.sharesOwnedFollowingTransaction'], bins=100)
+ax[1].set_title('Outlier removed twice', y=1.3)
+ax[1].set_xlabel('Amount of Holdings after Filing')
+ax[1].set_ylabel('Count')
+
+
+axes = [0, 1]
+for axe in axes:
+    for s in ax[axe].spines.values():
+        s.set_visible(False)
+    median = relevant_data_uncleaned_outliers_removed['postTransactionAmounts.sharesOwnedFollowingTransaction'].median()
+    ax[axe].axvline(median, linestyle="--", lw=1, c="red")
+    ax[axe].text(median,
+                 ax[axe].get_ylim()[1]*+1.12,
+                 f"median\n{median:.0f}",
+                 va="top",
+                 ha="center",
+                 color="red")
+
+    mean = relevant_data_uncleaned_outliers_removed['postTransactionAmounts.sharesOwnedFollowingTransaction'].mean()
+    ax[axe].axvline(mean, linestyle="--", lw=1, c="green")
+    ax[axe].text(mean,
+                 ax[axe].get_ylim()[1] * 1.12,
+                 f"mean\n{mean:.0f}",
+                 va="top", ha="center", color="green", clip_on=False)
+
+plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
+plt.show()
+
+
+# Distribution of direct_ownership
+ser = relevant_data_uncleaned_outliers_removed['direct_ownership']
+counts = ser.value_counts(dropna=False).sort_index()
+
+fig, ax = plt.subplots(figsize=(8, 5))
+bars = ax.bar(counts.index.astype(str), counts.values, width=0.6)
+
+ax.bar_label(bars, labels=[f"{v:,}" for v in counts.values], padding=2)
+ax.set_ylabel('Count')
+ax.set_title('Distribution of direct_ownership')
+for s in ax.spines.values():
+    s.set_visible(False)
+plt.tight_layout(); plt.show()
+
+
+# Distribution of is_direct, officer, 10percent, other
+vars = ['reportingOwner.relationship.isDirector',
+        'reportingOwner.relationship.isOfficer',
+        'reportingOwner.relationship.isTenPercentOwner',
+        'reportingOwner.relationship.isOther']
+
+titles = ['Director', 'Officer', '10% Owner', 'Other']
+
+fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+axes = ax.ravel()
+
+for i, v in enumerate(vars):
+    ser = relevant_data_uncleaned_outliers_removed[v]
+    counts = ser.value_counts(dropna=False).sort_index()
+
+    for s in axes[i].spines.values():
+        s.set_visible(False)
+
+    bars = axes[i].bar(counts.index.astype(str), counts.values, width=0.6)
+    axes[i].bar_label(bars, labels=[f"{int(val):,}" for val in counts.values], padding=2)
+    axes[i].set_ylabel('Amount of Filings per Insider')
+    axes[i].set_title(titles[i])
+
+plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
 plt.show()
 
 
@@ -350,7 +441,6 @@ plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
 plt.show()
 
 
-
 # Do High Frequency trader have different trades than low frequency traders
 # regarding the target variables?
 counts_t_1_percent_change_since_4d = (
@@ -462,7 +552,7 @@ width = 0.4
 colors = ["#E1DEDE", 'tab:blue']
 
 fig, ax = plt.subplots(2, 1, figsize=(12, 10))
-fig.suptitle("Do cluster buys hit often target variables then no cluster buys?",
+fig.suptitle("Do cluster buys hit often target variables then other buys?",
              fontsize=14)
 for i, col in enumerate(counts_t_1_percent_change_since_4d.columns):
     ax[0].bar(x + i*width,
@@ -676,8 +766,8 @@ def scatterplot(df, variable=None, target_compare="target"):
     combination = list(itertools.combinations(variable, 2))
 
     for v in variable:
-        relevant_combination = [(x_var, y_var) for x_var, y_var in combination if v in
-                            (x_var, y_var)]
+        relevant_combination = [(x_var, y_var) for x_var, y_var in combination
+                                if v in (x_var, y_var)]
 
         fig, axes = plt.subplots(nrows=5, ncols=5, figsize=(20, 20))
         axes = axes.flatten()

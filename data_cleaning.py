@@ -793,7 +793,7 @@ def balance(df, name_target="target"):
     return df
 
 
-def scaling(df, scale_strategy="all", columns_to_scale=None):
+def standardization(df, scale_strategy="all", columns_to_scale=None):
     """
     Applies Z-score standardization to the provided variables. By default, all
     non-boolean columns are scaled.

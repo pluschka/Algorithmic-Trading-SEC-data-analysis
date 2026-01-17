@@ -112,6 +112,6 @@ def extract_relevant_from_jsonl(filename='2018-01'):
     # save data
     insider_data.to_csv(f'data/relevant_{filename}.csv',
                         header=True,
-                        index=False)
+                        index=True)
 
     return insider_data
