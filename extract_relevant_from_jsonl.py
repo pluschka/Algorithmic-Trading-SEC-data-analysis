@@ -53,10 +53,11 @@ def extract_relevant_from_jsonl(filename='2018-01'):
 
     # drop NAs
     insider_data = insider_data.dropna(subset=['issuer.tradingSymbol'])
-    insider_data = insider_data.drop(insider_data[insider_data['issuer.tradingSymbol']
-                            .str
-                            .lower()
-                            .isin(['na','n/a','none'])].index)
+    insider_data = insider_data.drop(
+        insider_data[insider_data['issuer.tradingSymbol']
+                               .str
+                               .lower()
+                               .isin(['na', 'n/a', 'none'])].index)
 
     # P = Open market or private purchase of non-derivative or derivative
     # securities
