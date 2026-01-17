@@ -52,7 +52,7 @@ def extract_relevant_from_jsonl(filename='2018-01'):
     # filter relevant rows
 
     # drop NAs
-    insider_data = insider_data.dropna(subset='issuer.tradingSymbol')
+    insider_data = insider_data.dropna(subset=['issuer.tradingSymbol'])
     insider_data = insider_data[insider_data['issuer.tradingSymbol']
                                 .str
                                 .lower()
