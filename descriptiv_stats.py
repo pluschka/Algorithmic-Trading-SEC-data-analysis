@@ -6,7 +6,7 @@ import itertools
 from data_cleaning import outlier_strategy
 
 # plot total price development of a 300 sample
-all_df_of_close_data = pd.read_csv('data/all_df_of_close_data.csv')
+all_df_of_close_data = pd.read_csv('data/2026_01/sec_close.csv')
 
 # remove implausible data
 for num in range(364):
@@ -158,35 +158,47 @@ plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
 plt.show()
 
 
-# histogram of price
-fig, ax = plt.subplots(1, 1, figsize=(12, 6))
-fig.suptitle("Histogram of Number of Price per Share", fontsize=14)
-ax.hist(relevant_data_uncleaned_outliers_removed['amounts.pricePerShare'],
-        bins=50)
-ax.set_xlabel('Amount of Price per share')
-ax.set_ylabel('Count')
 
-median = relevant_data_uncleaned_outliers_removed['amounts.pricePerShare']\
-    .median()
 
-for s in ax.spines.values():
-    s.set_visible(False)
+# Histogram of Price
+fig, ax = plt.subplots(2, 1, figsize=(12, 10))
+fig.suptitle("Histogram of Price", fontsize=14)
+ax[0].hist(df['amounts.pricePerShare'], bins=100)
+ax[0].set_title('Outlier removed once', y=1.1)
+ax[0].set_xlabel('Price')
+ax[0].set_ylabel('Count')
 
-ax.axvline(median, linestyle="--", lw=1, c="red")
-ax.text(median,
-        ax.get_ylim()[1] * 1.12,
-        f"median\n{median:.0f}",
-        va="top", ha="right", color="red", clip_on=False)
+# remove upper outliers in amounts.pricePerShare for better look
+df = df.copy()
+q75, q25 = np.quantile(df['amounts.pricePerShare'], [0.75, 0.25])
+iqr = q75 - q25
+df = df[df['amounts.pricePerShare'] <= q75 + 1.5 * iqr]
 
-mean = relevant_data_uncleaned_outliers_removed['amounts.pricePerShare'].mean()
+ax[1].hist(df['amounts.pricePerShare'], bins=100)
+ax[1].set_title('Outlier removed twice', y=1.3)
+ax[1].set_xlabel('Price')
+ax[1].set_ylabel('Count')
 
-for s in ax.spines.values():
-    s.set_visible(False)
-ax.axvline(mean, linestyle="--", lw=1, c="green")
-ax.text(mean,
-        ax.get_ylim()[1] * 1.12,
-        f"mean\n{mean:.0f}",
-        va="top", ha="left", color="green", clip_on=False)
+
+axes = [0, 1]
+for axe in axes:
+    for s in ax[axe].spines.values():
+        s.set_visible(False)
+    median = df['amounts.pricePerShare'].median()
+    ax[axe].axvline(median, linestyle="--", lw=1, c="red")
+    ax[axe].text(median,
+                 ax[axe].get_ylim()[1]*+1.12,
+                 f"median\n{median:.0f}",
+                 va="top",
+                 ha="center",
+                 color="red")
+
+    mean = df['amounts.pricePerShare'].mean()
+    ax[axe].axvline(mean, linestyle="--", lw=1, c="green")
+    ax[axe].text(mean,
+                 ax[axe].get_ylim()[1] * 1.12,
+                 f"mean\n{mean:.0f}",
+                 va="top", ha="center", color="green", clip_on=False)
 
 plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
 plt.show()
@@ -248,7 +260,8 @@ ax.set_ylabel('Count')
 ax.set_title('Distribution of direct_ownership')
 for s in ax.spines.values():
     s.set_visible(False)
-plt.tight_layout(); plt.show()
+plt.tight_layout()
+plt.show()
 
 
 # Distribution of is_direct, officer, 10percent, other

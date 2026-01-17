@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-all_df_of_close_data = pd.read_csv('data/all_df_of_close_data.csv')
+all_df_of_close_data = pd.read_csv('data/2026_01/sec_close.csv')
 
 # change string into bool, D = direct, I = indirect
 all_df_of_close_data['direct_ownership'] = (
