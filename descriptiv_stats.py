@@ -6,22 +6,22 @@ import itertools
 from data_cleaning import outlier_strategy
 
 # plot total price development of a 300 sample
-all_df_of_close_data = pd.read_csv('data/2026_01/sec_close.csv')
+df = pd.read_csv('data/2026_01/sec_close.csv')
 
 # remove implausible data
 for num in range(364):
-    all_df_of_close_data = all_df_of_close_data[
-        all_df_of_close_data[f'{num}'] >= 0]
+    df = df[
+        df[f'{num}'] >= 0]
 
 # remove upper outliers
-df = all_df_of_close_data.copy()
+df = df.copy()
 for num in range(364):
     q75, q25 = np.quantile(df[f'{num}'], [0.75, 0.25])
     iqr = q75 - q25
     df = df[df[f'{num}'] <= q75 + 1.5 * iqr]
 
-all_df_of_close_data = df
-df = all_df_of_close_data.copy()
+df = df
+df = df.copy()
 
 day_cols = [str(i) for i in range(364)]
 
@@ -70,9 +70,9 @@ plt.show()
 
 
 # Mean Returns for one share each filling
-x_0 = all_df_of_close_data['0'].to_numpy()[:, None]
+x_0 = df['0'].to_numpy()[:, None]
 day_cols = [str(i) for i in range(1, 364)]
-Xt = all_df_of_close_data[day_cols].to_numpy()
+Xt = df[day_cols].to_numpy()
 return_matrix = Xt - x_0
 return_df = pd.DataFrame(return_matrix)
 mean_return = return_df.mean()
@@ -92,10 +92,10 @@ plt.show()
 
 
 # Total Mean Returns: actual return with amount of shares
-n = all_df_of_close_data['amounts.shares'].to_numpy()[:, None]
-x_0 = all_df_of_close_data['0'].to_numpy()[:, None]
+n = df['amounts.shares'].to_numpy()[:, None]
+x_0 = df['0'].to_numpy()[:, None]
 day_cols = [str(i) for i in range(1, 364)]
-Xt = all_df_of_close_data[day_cols].to_numpy()
+Xt = df[day_cols].to_numpy()
 return_matrix = (Xt - x_0)*n
 return_df = pd.DataFrame(return_matrix)
 mean_return = return_df.mean()
@@ -116,21 +116,21 @@ plt.show()
 
 # Histogram of shares
 relevant_data_uncleaned = pd.read_csv('data/relevant_data_uncleaned.csv')
-relevant_data_uncleaned_outliers_removed = \
+df = \
     outlier_strategy(relevant_data_uncleaned,
                      default_outlier_strategy="delete",
                      except_replace_0=[],
                      except_replace_mean=[],
                      except_delete=[],
                      ignore=[])
-relevant_data_uncleaned_outliers_removed.shape
+df.shape
 fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 fig.suptitle("Histogram of Number of Shares", fontsize=14)
-ax.hist(relevant_data_uncleaned_outliers_removed['amounts.shares'], bins=50)
+ax.hist(df['amounts.shares'], bins=50)
 ax.set_xlabel('Amount of shares')
 ax.set_ylabel('Count')
 
-median = relevant_data_uncleaned_outliers_removed['amounts.shares'].median()
+median = df['amounts.shares'].median()
 
 for s in ax.spines.values():
     s.set_visible(False)
@@ -142,7 +142,7 @@ ax.text(median,
         ha="center",
         color="red")
 
-mean = relevant_data_uncleaned_outliers_removed['amounts.shares'].mean()
+mean = df['amounts.shares'].mean()
 
 for s in ax.spines.values():
     s.set_visible(False)
@@ -158,98 +158,129 @@ plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
 plt.show()
 
 
-
-
 # Histogram of Price
 fig, ax = plt.subplots(2, 1, figsize=(12, 10))
 fig.suptitle("Histogram of Price", fontsize=14)
+
 ax[0].hist(df['amounts.pricePerShare'], bins=100)
 ax[0].set_title('Outlier removed once', y=1.1)
 ax[0].set_xlabel('Price')
 ax[0].set_ylabel('Count')
 
 # remove upper outliers in amounts.pricePerShare for better look
-df = df.copy()
-q75, q25 = np.quantile(df['amounts.pricePerShare'], [0.75, 0.25])
+df_copy = df.copy()
+q75, q25 = np.quantile(df_copy['amounts.pricePerShare'], [0.75, 0.25])
 iqr = q75 - q25
-df = df[df['amounts.pricePerShare'] <= q75 + 1.5 * iqr]
+df_copy = df_copy[df_copy['amounts.pricePerShare'] <= q75 + 1.5 * iqr]
 
-ax[1].hist(df['amounts.pricePerShare'], bins=100)
+ax[1].hist(df_copy['amounts.pricePerShare'], bins=100)
 ax[1].set_title('Outlier removed twice', y=1.3)
 ax[1].set_xlabel('Price')
 ax[1].set_ylabel('Count')
 
+# median / mean per axis with correct df
+data_per_axis = {
+    0: df['amounts.pricePerShare'],
+    1: df_copy['amounts.pricePerShare'],
+}
 
-axes = [0, 1]
-for axe in axes:
-    for s in ax[axe].spines.values():
+for i in [0, 1]:
+    for s in ax[i].spines.values():
         s.set_visible(False)
-    median = df['amounts.pricePerShare'].median()
-    ax[axe].axvline(median, linestyle="--", lw=1, c="red")
-    ax[axe].text(median,
-                 ax[axe].get_ylim()[1]*+1.12,
-                 f"median\n{median:.0f}",
-                 va="top",
-                 ha="center",
-                 color="red")
 
-    mean = df['amounts.pricePerShare'].mean()
-    ax[axe].axvline(mean, linestyle="--", lw=1, c="green")
-    ax[axe].text(mean,
-                 ax[axe].get_ylim()[1] * 1.12,
-                 f"mean\n{mean:.0f}",
-                 va="top", ha="center", color="green", clip_on=False)
+    median = data_per_axis[i].median()
+    mean = data_per_axis[i].mean()
+
+    ax[i].axvline(median, linestyle="--", lw=1, c="red")
+    ax[i].text(
+        median,
+        ax[i].get_ylim()[1] * 1.12,
+        f"median\n{median:.0f}",
+        va="top",
+        ha="center",
+        color="red",
+        clip_on=False,
+    )
+
+    ax[i].axvline(mean, linestyle="--", lw=1, c="green")
+    ax[i].text(
+        mean,
+        ax[i].get_ylim()[1] * 1.12,
+        f"mean\n{mean:.0f}",
+        va="top",
+        ha="center",
+        color="green",
+        clip_on=False,
+    )
 
 plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
 plt.show()
 
-
 # Histogram of Post Transaction Holdings of Issuer
 fig, ax = plt.subplots(2, 1, figsize=(12, 10))
 fig.suptitle("Histogram of Post Transaction Holdings of Issuer", fontsize=14)
-ax[0].hist(relevant_data_uncleaned_outliers_removed['postTransactionAmounts.sharesOwnedFollowingTransaction'], bins=100)
+
+ax[0].hist(df['postTransactionAmounts.sharesOwnedFollowingTransaction'], bins=100)
 ax[0].set_title('Outlier removed once', y=1.1)
 ax[0].set_xlabel('Amount of Holdings after Filing')
 ax[0].set_ylabel('Count')
 
 # remove upper outliers in postTransactionAmounts.sharesOwnedFollowingTransaction for better look
-df = relevant_data_uncleaned_outliers_removed.copy()
-q75, q25 = np.quantile(df['postTransactionAmounts.sharesOwnedFollowingTransaction'], [0.75, 0.25])
+df_copy = df.copy()
+q75, q25 = np.quantile(
+    df['postTransactionAmounts.sharesOwnedFollowingTransaction'], [0.75, 0.25]
+)
 iqr = q75 - q25
-df = df[df['postTransactionAmounts.sharesOwnedFollowingTransaction'] <= q75 + 1.5 * iqr]
+df_copy = df_copy[
+    df_copy['postTransactionAmounts.sharesOwnedFollowingTransaction'] <= q75 + 1.5 * iqr
+]
 
-ax[1].hist(df['postTransactionAmounts.sharesOwnedFollowingTransaction'], bins=100)
+ax[1].hist(df_copy['postTransactionAmounts.sharesOwnedFollowingTransaction'], bins=100)
 ax[1].set_title('Outlier removed twice', y=1.3)
 ax[1].set_xlabel('Amount of Holdings after Filing')
 ax[1].set_ylabel('Count')
 
+# median / mean per axis with correct df
+data_per_axis = {
+    0: df['postTransactionAmounts.sharesOwnedFollowingTransaction'],
+    1: df_copy['postTransactionAmounts.sharesOwnedFollowingTransaction'],
+}
 
-axes = [0, 1]
-for axe in axes:
-    for s in ax[axe].spines.values():
+for i in [0, 1]:
+    for s in ax[i].spines.values():
         s.set_visible(False)
-    median = relevant_data_uncleaned_outliers_removed['postTransactionAmounts.sharesOwnedFollowingTransaction'].median()
-    ax[axe].axvline(median, linestyle="--", lw=1, c="red")
-    ax[axe].text(median,
-                 ax[axe].get_ylim()[1]*+1.12,
-                 f"median\n{median:.0f}",
-                 va="top",
-                 ha="center",
-                 color="red")
 
-    mean = relevant_data_uncleaned_outliers_removed['postTransactionAmounts.sharesOwnedFollowingTransaction'].mean()
-    ax[axe].axvline(mean, linestyle="--", lw=1, c="green")
-    ax[axe].text(mean,
-                 ax[axe].get_ylim()[1] * 1.12,
-                 f"mean\n{mean:.0f}",
-                 va="top", ha="center", color="green", clip_on=False)
+    median = data_per_axis[i].median()
+    mean = data_per_axis[i].mean()
+
+    ax[i].axvline(median, linestyle="--", lw=1, c="red")
+    ax[i].text(
+        median,
+        ax[i].get_ylim()[1] * 1.12,
+        f"median\n{median:.0f}",
+        va="top",
+        ha="center",
+        color="red",
+        clip_on=False,
+    )
+
+    ax[i].axvline(mean, linestyle="--", lw=1, c="green")
+    ax[i].text(
+        mean,
+        ax[i].get_ylim()[1] * 1.12,
+        f"mean\n{mean:.0f}",
+        va="top",
+        ha="center",
+        color="green",
+        clip_on=False,
+    )
 
 plt.tight_layout(pad=2.0, w_pad=1.0, h_pad=2.0)
 plt.show()
 
 
 # Distribution of direct_ownership
-ser = relevant_data_uncleaned_outliers_removed['direct_ownership']
+ser = df['direct_ownership']
 counts = ser.value_counts(dropna=False).sort_index()
 
 fig, ax = plt.subplots(figsize=(8, 5))
@@ -276,7 +307,7 @@ fig, ax = plt.subplots(2, 2, figsize=(10, 10))
 axes = ax.ravel()
 
 for i, v in enumerate(vars):
-    ser = relevant_data_uncleaned_outliers_removed[v]
+    ser = df[v]
     counts = ser.value_counts(dropna=False).sort_index()
 
     for s in axes[i].spines.values():
@@ -293,13 +324,13 @@ plt.show()
 
 # Does the filing month affect the target
 counts_t_1_percent_change_since_4d = (
-    all_df_of_close_data
+    df
     .groupby(['transaction_month', 't_1_percent_change_since_4d'])
     .size()
     .unstack(fill_value=0))
 
 counts_t_10_percent_change_since_198d = (
-    all_df_of_close_data
+    df
     .groupby(['transaction_month', 't_10_percent_change_since_198d'])
     .size()
     .unstack(fill_value=0))
@@ -345,13 +376,13 @@ plt.show()
 
 # Does the economic cycle effect the target
 counts_t_1_percent_change_since_4d = (
-    all_df_of_close_data
+    df
     .groupby(['USRECD', 't_1_percent_change_since_4d'])
     .size()
     .unstack(fill_value=0))
 
 counts_t_10_percent_change_since_198d = (
-    all_df_of_close_data
+    df
     .groupby(['USRECD', 't_10_percent_change_since_198d'])
     .size()
     .unstack(fill_value=0))
@@ -399,11 +430,11 @@ fig.suptitle('Is there a relationship between the target variable and the '
              'trading behavior approximated by the frequency of trades of an '
              'insider?',
              fontsize=14)
-sns.boxplot(data=all_df_of_close_data,
+sns.boxplot(data=df,
             x='t_1_percent_change_since_4d',
             y='filing_count_reportingOwner.name',
             ax=ax[0, 0])
-sns.boxplot(data=all_df_of_close_data,
+sns.boxplot(data=df,
             x='t_10_percent_change_since_198d',
             y='filing_count_reportingOwner.name',
             ax=ax[0, 1])
@@ -411,11 +442,11 @@ sns.boxplot(data=all_df_of_close_data,
 
 # remove upper outliers in filing_count_reportingOwner.name
 # for better look at the boxplot
-df = all_df_of_close_data.copy()
+df_copy = df.copy()
 q75, q25 = np.quantile(df[f'{'filing_count_reportingOwner.name'}'],
                        [0.75, 0.25])
 iqr = q75 - q25
-df = df[df[f'{'filing_count_reportingOwner.name'}'] <= q75 + 1.5 * iqr]
+df_copy = df_copy[df_copy[f'{'filing_count_reportingOwner.name'}'] <= q75 + 1.5 * iqr]
 
 sns.boxplot(data=df,
             x='t_1_percent_change_since_4d',
@@ -457,13 +488,13 @@ plt.show()
 # Do High Frequency trader have different trades than low frequency traders
 # regarding the target variables?
 counts_t_1_percent_change_since_4d = (
-    all_df_of_close_data
+    df
     .groupby(['high_frequency_trader', 't_1_percent_change_since_4d'])
     .size()
     .unstack(fill_value=0))
 
 counts_t_10_percent_change_since_198d = (
-    all_df_of_close_data
+    df
     .groupby(['high_frequency_trader', 't_10_percent_change_since_198d'])
     .size()
     .unstack(fill_value=0))
@@ -512,13 +543,13 @@ plt.show()
 # histogram of cluster buys
 fig, ax = plt.subplots(2, 1, figsize=(12, 6))
 fig.suptitle("Histogram of cluster buys", fontsize=14)
-ax[0].hist(all_df_of_close_data['trades_14d'], bins=100)
+ax[0].hist(df['trades_14d'], bins=100)
 ax[0].set_title('Raw data')
 ax[0].set_xlabel('Amount of fillings on one Ticker in past 14 days')
 ax[0].set_ylabel('Count')
 
 # remove upper outliers in trades_14d for better look
-df = all_df_of_close_data.copy()
+df = df.copy()
 q75, q25 = np.quantile(df['trades_14d'], [0.75, 0.25])
 iqr = q75 - q25
 df = df[df['trades_14d'] <= q75 + 1.5 * iqr]
@@ -528,7 +559,7 @@ ax[1].set_title('Without outliers')
 ax[1].set_xlabel('Amount of fillings on one Ticker in past 14 days')
 ax[1].set_ylabel('Count')
 
-median = all_df_of_close_data['trades_14d'].median()
+median = df['trades_14d'].median()
 axes = [0, 1]
 for axe in axes:
     for s in ax[axe].spines.values():
@@ -546,13 +577,13 @@ plt.show()
 
 # Do cluster buys hit often target variables then no cluster buys?
 counts_t_1_percent_change_since_4d = (
-    all_df_of_close_data
+    df
     .groupby(['cluster_buy', 't_1_percent_change_since_4d'])
     .size()
     .unstack(fill_value=0))
 
 counts_t_10_percent_change_since_198d = (
-    all_df_of_close_data
+    df
     .groupby(['cluster_buy', 't_10_percent_change_since_198d'])
     .size()
     .unstack(fill_value=0))
@@ -603,13 +634,13 @@ plt.show()
 
 # Do high prices hit often target variables then trades with low prices?
 counts_t_1_percent_change_since_4d = (
-    all_df_of_close_data
+    df
     .groupby(['high_price', 't_1_percent_change_since_4d'])
     .size()
     .unstack(fill_value=0))
 
 counts_t_10_percent_change_since_198d = (
-    all_df_of_close_data
+    df
     .groupby(['high_price', 't_10_percent_change_since_198d'])
     .size()
     .unstack(fill_value=0))
@@ -660,14 +691,14 @@ plt.show()
 # Histogram of change in holdings
 fig, ax = plt.subplots(2, 1, figsize=(12, 6))
 fig.suptitle("Histogram of Change in Holdings", fontsize=14)
-ax[0].hist(all_df_of_close_data['holding_change_percent'], bins=100)
+ax[0].hist(df['holding_change_percent'], bins=100)
 ax[0].set_title('Raw data')
 ax[0].set_xlabel('Change of holding of one insider due to this filling in '
                  'percent')
 ax[0].set_ylabel('Count')
 
 # remove upper outliers in trades_14d for better look
-df = all_df_of_close_data.copy()
+df = df.copy()
 q75, q25 = np.quantile(df['holding_change_percent'], [0.75, 0.25])
 iqr = q75 - q25
 df = df[df['holding_change_percent'] <= q75 + 1.5 * iqr]
@@ -678,7 +709,7 @@ ax[1].set_xlabel('Change of holding of one insider due to this filling in '
                  'percent')
 ax[1].set_ylabel('Count')
 
-median = all_df_of_close_data['holding_change_percent'].median()
+median = df['holding_change_percent'].median()
 axes = [0, 1]
 for axe in axes:
     for s in ax[axe].spines.values():
@@ -697,13 +728,13 @@ plt.show()
 # Do high change in holdings hit often target variables then trades with low
 # change in holdings?
 counts_t_1_percent_change_since_4d = (
-    all_df_of_close_data
+    df
     .groupby(['high_change_in_holdings', 't_1_percent_change_since_4d'])
     .size()
     .unstack(fill_value=0))
 
 counts_t_10_percent_change_since_198d = (
-    all_df_of_close_data
+    df
     .groupby(['high_change_in_holdings', 't_10_percent_change_since_198d'])
     .size()
     .unstack(fill_value=0))
