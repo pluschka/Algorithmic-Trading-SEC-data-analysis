@@ -1,3 +1,0 @@
-﻿# insider_trading_strategy  
- under construction - comming soon
-
