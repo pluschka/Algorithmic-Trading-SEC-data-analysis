@@ -185,5 +185,4 @@ else:
 
 print(final_df.shape)
 
-final_df.to_csv("data/close_relative_to_filing.csv",
-                      index=False)
+final_df.to_csv("data/close_relative_to_filing.csv", index=False)
